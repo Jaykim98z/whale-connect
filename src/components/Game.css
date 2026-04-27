@@ -518,41 +518,47 @@
     0 8px 24px rgba(0,0,0,0.12);
 }
 
-/* 빛 줄기 (클리어 전용) */
+/* 빛 줄기 (클리어 전용) — 원형 + 중앙→외곽 페이드아웃 */
 .result-rays {
   position: absolute;
-  top: -60px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  width: 300px;
-  height: 300px;
+  transform: translate(-50%, -50%);
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;           /* 원형으로 클립 */
   background: conic-gradient(
     from 0deg,
-    transparent 0deg, rgba(255,209,102,0.12) 10deg,
-    transparent 20deg, rgba(255,209,102,0.12) 30deg,
-    transparent 40deg, rgba(255,209,102,0.12) 50deg,
-    transparent 60deg, rgba(255,209,102,0.12) 70deg,
-    transparent 80deg, rgba(255,209,102,0.12) 90deg,
-    transparent 100deg, rgba(255,209,102,0.12) 110deg,
-    transparent 120deg, rgba(255,209,102,0.12) 130deg,
-    transparent 140deg, rgba(255,209,102,0.12) 150deg,
-    transparent 160deg, rgba(255,209,102,0.12) 170deg,
-    transparent 180deg, rgba(255,209,102,0.12) 190deg,
-    transparent 200deg, rgba(255,209,102,0.12) 210deg,
-    transparent 220deg, rgba(255,209,102,0.12) 230deg,
-    transparent 240deg, rgba(255,209,102,0.12) 250deg,
-    transparent 260deg, rgba(255,209,102,0.12) 270deg,
-    transparent 280deg, rgba(255,209,102,0.12) 290deg,
-    transparent 300deg, rgba(255,209,102,0.12) 310deg,
-    transparent 320deg, rgba(255,209,102,0.12) 330deg,
-    transparent 340deg, rgba(255,209,102,0.12) 350deg,
+    transparent 0deg,   rgba(255,209,102,0.28) 9deg,
+    transparent 18deg,  rgba(255,209,102,0.28) 27deg,
+    transparent 36deg,  rgba(255,209,102,0.28) 45deg,
+    transparent 54deg,  rgba(255,209,102,0.28) 63deg,
+    transparent 72deg,  rgba(255,209,102,0.28) 81deg,
+    transparent 90deg,  rgba(255,209,102,0.28) 99deg,
+    transparent 108deg, rgba(255,209,102,0.28) 117deg,
+    transparent 126deg, rgba(255,209,102,0.28) 135deg,
+    transparent 144deg, rgba(255,209,102,0.28) 153deg,
+    transparent 162deg, rgba(255,209,102,0.28) 171deg,
+    transparent 180deg, rgba(255,209,102,0.28) 189deg,
+    transparent 198deg, rgba(255,209,102,0.28) 207deg,
+    transparent 216deg, rgba(255,209,102,0.28) 225deg,
+    transparent 234deg, rgba(255,209,102,0.28) 243deg,
+    transparent 252deg, rgba(255,209,102,0.28) 261deg,
+    transparent 270deg, rgba(255,209,102,0.28) 279deg,
+    transparent 288deg, rgba(255,209,102,0.28) 297deg,
+    transparent 306deg, rgba(255,209,102,0.28) 315deg,
+    transparent 324deg, rgba(255,209,102,0.28) 333deg,
+    transparent 342deg, rgba(255,209,102,0.28) 351deg,
     transparent 360deg
   );
-  animation: raysRotate 12s linear infinite;
+  /* 중앙에서 외곽으로 갈수록 자연스럽게 페이드아웃 */
+  mask-image: radial-gradient(circle, white 0%, rgba(255,255,255,0.6) 50%, transparent 75%);
+  -webkit-mask-image: radial-gradient(circle, white 0%, rgba(255,255,255,0.6) 50%, transparent 75%);
+  animation: raysRotate 14s linear infinite;
   pointer-events: none;
   z-index: 0;
 }
-@keyframes raysRotate { to { transform: translateX(-50%) rotate(360deg); } }
+@keyframes raysRotate { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
 /* ── 아이콘 래퍼 ── */
 .result-icon-wrap {
