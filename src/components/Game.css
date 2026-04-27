@@ -560,6 +560,15 @@
 }
 @keyframes raysRotate { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
+/* ── 아이콘 + 빛살 공통 래퍼 (트로피 중심 기준으로 rays 정렬) ── */
+.result-icon-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
 /* ── 아이콘 래퍼 ── */
 .result-icon-wrap {
   display: flex;

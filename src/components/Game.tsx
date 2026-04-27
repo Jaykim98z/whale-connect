@@ -353,9 +353,12 @@ export default function Game() {
           <div className="result-card result-card-clear">
             <div className="result-rays" />
 
-            {/* 트로피 아이콘 */}
-            <div className="result-icon-wrap result-icon-clear">
-              <Trophy size={44} strokeWidth={1.5} />
+            {/* 트로피 아이콘 + 빛살 (같은 래퍼 → 트로피 중심 기준 회전) */}
+            <div className="result-icon-area">
+              <div className="result-rays" />
+              <div className="result-icon-wrap result-icon-clear">
+                <Trophy size={44} strokeWidth={1.5} />
+              </div>
             </div>
 
             {/* 타이틀 */}
