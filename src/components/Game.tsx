@@ -177,14 +177,6 @@ export default function Game() {
     setIsPaused(false);
   };
 
-  // 엔딩 화면 미리보기 (타이틀에서 플레이 없이 확인용)
-  const handlePreviewEnding = () => {
-    const mockFinal = 5_280;
-    setFinalScore(mockFinal);
-    setClearStats({ matchScore: 4_280, clearBonus: 500, timeBonus: 500 });
-    setPhase('cleared');
-  };
-
   // 음소거 토글
   const handleToggleMute = () => {
     const next = !isMuted;
@@ -344,7 +336,7 @@ export default function Game() {
   const timerColor = timeRatio > 0.4 ? '#4ecdc4' : timeRatio > 0.2 ? '#ffd166' : '#ef4444';
 
   if (phase === 'title') {
-    return <StartScreen onStart={startGame} onPreviewEnding={handlePreviewEnding} />;
+    return <StartScreen onStart={startGame} />;
   }
 
   return (

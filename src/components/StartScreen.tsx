@@ -7,10 +7,9 @@ import './StartScreen.css';
 
 interface Props {
   onStart: () => void;
-  onPreviewEnding?: () => void;
 }
 
-export default function StartScreen({ onStart, onPreviewEnding }: Props) {
+export default function StartScreen({ onStart }: Props) {
   const [showRanking, setShowRanking] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -108,12 +107,6 @@ export default function StartScreen({ onStart, onPreviewEnding }: Props) {
             랭킹 보기
           </button>
 
-          {/* 엔딩 미리보기 (개발/확인용) */}
-          {onPreviewEnding && (
-            <button className="ss-btn-preview" onClick={onPreviewEnding}>
-              🎬 엔딩 화면 미리보기
-            </button>
-          )}
         </div>
       </div>
 
