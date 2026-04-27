@@ -1,13 +1,57 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /wc-rankings/{docId} {
-      allow read: if true;
-      allow write: if true;
+
+    // ── 유효한 랭킹 데이터인지 검증 ──
+    function isValidEntry(data) {
+      return
+        // 필수 필드 존재 여부
+        data.keys().hasAll(['score', 'playerName', 'soopId', 'isWC', 'createdAt', 'timestamp', 'profileImage'])
+
+        // score: 양의 정수, 현실적인 최대값 이하
+        // (페어×10 + 클리어보너스×100 + 잔여시간×10 기준 이론 최대 ~10,000점)
+        && data.score is number
+        && data.score > 0
+        && data.score <= 99999
+
+        // playerName: 빈 문자열 불가, 최대 50자
+        && data.playerName is string
+        && data.playerName.size() >= 1
+        && data.playerName.size() <= 50
+
+        // soopId: 빈 문자열 불가, 최대 50자
+        && data.soopId is string
+        && data.soopId.size() >= 1
+        && data.soopId.size() <= 50
+
+        // isWC: 반드시 boolean
+        && data.isWC is bool
+
+        // createdAt: ISO 문자열
+        && data.createdAt is string
+
+        // timestamp: 서버 타임스탬프만 허용 (클라이언트 임의값 차단)
+        && data.timestamp == request.time
+
+        // profileImage: null 또는 문자열
+        && (data.profileImage == null || data.profileImage is string);
     }
+
+    // ── 전체 랭킹 ──
+    match /wc-rankings/{docId} {
+      allow read:   if true;
+      allow create: if isValidEntry(request.resource.data);
+      allow delete: if true;   // 앱 내부 정리(cleanup) 및 갱신 삭제 허용
+      allow update: if false;  // updateDoc 미사용 — 차단
+    }
+
+    // ── 고래상사 멤버 전용 랭킹 ──
     match /wc-rankings-wc/{docId} {
-      allow read: if true;
-      allow write: if true;
+      allow read:   if true;
+      allow create: if isValidEntry(request.resource.data)
+                    && request.resource.data.isWC == true;  // isWC=true 강제
+      allow delete: if true;
+      allow update: if false;
     }
   }
 }
