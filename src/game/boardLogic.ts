@@ -54,20 +54,29 @@ export function shuffleBoard(board: Board): Board {
 export function countPossiblePairs(board: Board): number {
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
-  // 장애물(-1)은 제외
-  const cells: { r: number; c: number; val: number }[] = [];
+
+  // 타입별로 셀을 그룹화 (장애물 제외)
+  // → 같은 타입 내에서만 findPath 호출, 타입 간 비교 루프 제거
+  const groups = new Map<number, { r: number; c: number }[]>();
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const v = board[r][c];
-      if (v !== null && v !== OBSTACLE_ID) cells.push({ r, c, val: v });
+      if (v === null || v === OBSTACLE_ID) continue;
+      const group = groups.get(v);
+      if (group) group.push({ r, c });
+      else groups.set(v, [{ r, c }]);
     }
   }
+
+  // 같은 타입 그룹 내에서만 경로 체크
+  // S5 기준: 전체 루프 8,911회 → 406회로 감소
   let count = 0;
-  for (let i = 0; i < cells.length; i++) {
-    for (let j = i + 1; j < cells.length; j++) {
-      if (cells[i].val === cells[j].val) {
-        const path = findPath(board, cells[i].r, cells[i].c, cells[j].r, cells[j].c);
-        if (path !== null) count++;
+  for (const cells of groups.values()) {
+    for (let i = 0; i < cells.length; i++) {
+      for (let j = i + 1; j < cells.length; j++) {
+        if (findPath(board, cells[i].r, cells[i].c, cells[j].r, cells[j].c) !== null) {
+          count++;
+        }
       }
     }
   }
