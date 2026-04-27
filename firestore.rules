@@ -9,7 +9,6 @@ service cloud.firestore {
         data.keys().hasAll(['score', 'playerName', 'soopId', 'isWC', 'createdAt', 'timestamp', 'profileImage'])
 
         // score: 양의 정수, 현실적인 최대값 이하
-        // (페어×10 + 클리어보너스×100 + 잔여시간×10 기준 이론 최대 ~10,000점)
         && data.score is number
         && data.score > 0
         && data.score <= 99999

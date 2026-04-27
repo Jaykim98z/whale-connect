@@ -13,3 +13,12 @@ html, body, #root {
   color: #1b3a6b;
   overflow: hidden;
 }
+
+/* 애니메이션 감소 접근성 설정 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

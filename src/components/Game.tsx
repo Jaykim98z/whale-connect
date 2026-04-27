@@ -42,10 +42,19 @@ function getBoardConfig(stage: number) {
   return configs[s - 1];
 }
 
+function formatTime(sec: number): string {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
 export default function Game() {
   const [phase, setPhase] = useState<GamePhase>('title');
   const [stage, setStage] = useState(1);
-  const [board, setBoard] = useState<BoardState>(() => generateBoardWithObstacles(8, 10, [...Array<number>(16).fill(4), ...Array<number>(2).fill(6), 2, 2], 0));
+  const [board, setBoard] = useState<BoardState>(() => {
+    const { rows, cols, counts, obstacleCount } = getBoardConfig(1);
+    return generateBoardWithObstacles(rows, cols, counts, obstacleCount);
+  });
   const [selected, setSelected] = useState<[number, number] | null>(null);
   const [pathCells, setPathCells] = useState<Set<string>>(new Set());
   const [matchedCells, setMatchedCells] = useState<Set<string>>(new Set());
@@ -92,6 +101,13 @@ export default function Game() {
     }, 1000);
   }, [stopTimer]);
 
+  // 이전 타이머를 취소하고 새 메시지로 교체 — 연속 호출 시 타이머 누수 방지
+  const showItemMsg = useCallback((msg: string) => {
+    if (itemMsgTimerRef.current) clearTimeout(itemMsgTimerRef.current);
+    setItemMsg(msg);
+    itemMsgTimerRef.current = setTimeout(() => setItemMsg(null), 1800);
+  }, []);
+
   // 타이머: phase + isPaused 에 따라 제어
   useEffect(() => {
     if (phase === 'playing' && !isPaused) startTimer();
@@ -116,7 +132,7 @@ export default function Game() {
       }, AUTO_SHUFFLE_DELAY_MS);
       return () => clearTimeout(t);
     }
-  }, [board, phase]);
+  }, [board, phase, showItemMsg]);
 
   const startGame = () => {
     const { rows, cols, counts, obstacleCount } = getBoardConfig(1);
@@ -136,13 +152,6 @@ export default function Game() {
     setIsPaused(false);
     pendingRef.current.clear();
     setPhase('playing');
-  };
-
-  // 이전 타이머를 취소하고 새 메시지로 교체 — 연속 호출 시 타이머 누수 방지
-  const showItemMsg = (msg: string) => {
-    if (itemMsgTimerRef.current) clearTimeout(itemMsgTimerRef.current);
-    setItemMsg(msg);
-    itemMsgTimerRef.current = setTimeout(() => setItemMsg(null), 1800);
   };
 
   // HUD 홈 버튼 — 게임 중 실수 클릭 방지: 일시정지 + 확인 다이얼로그
@@ -329,13 +338,7 @@ export default function Game() {
         });
       }, MATCH_ANIM_MS);
     }, PATH_SHOW_MS);
-  }, [phase, board, selected, isPaused, stage, stopTimer]);
-
-  const formatTime = (sec: number) => {
-    const m = Math.floor(sec / 60).toString().padStart(2, '0');
-    const s = (sec % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
+  }, [phase, board, selected, isPaused, stage, stopTimer, showItemMsg]);
 
   const timeRatio = Math.min(timeLeft / TIME_LIMIT, 1);
   const timerColor = timeRatio > 0.4 ? '#4ecdc4' : timeRatio > 0.2 ? '#ffd166' : '#ef4444';

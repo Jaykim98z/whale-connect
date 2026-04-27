@@ -1,31 +1,7 @@
-import { ROWS, COLS, CARD_TYPES, CARDS_PER_TYPE, OBSTACLE_ID } from './constants';
+import { CARD_TYPES, OBSTACLE_ID } from './constants';
 import { findPath } from './connectLogic';
 
 export type Board = (number | null)[][];
-
-/**
- * tileCounts: 각 타입별 카드 장수 배열 (짝수여야 쌍이 성립)
- * 단일 숫자를 넘기면 전체 타입에 동일 적용
- */
-export function generateBoard(
-  rows = ROWS,
-  cols = COLS,
-  tileCounts: number[] | number = CARDS_PER_TYPE,
-): Board {
-  const counts = Array.isArray(tileCounts)
-    ? tileCounts
-    : Array(CARD_TYPES).fill(tileCounts);
-
-  const tiles: number[] = [];
-  for (let id = 0; id < counts.length; id++) {
-    for (let k = 0; k < counts[id]; k++) tiles.push(id);
-  }
-  shuffle(tiles);
-
-  return Array.from({ length: rows }, (_, r) =>
-    Array.from({ length: cols }, (_, c) => tiles[r * cols + c] ?? null)
-  );
-}
 
 function shuffle<T>(arr: T[]): void {
   for (let i = arr.length - 1; i > 0; i--) {
