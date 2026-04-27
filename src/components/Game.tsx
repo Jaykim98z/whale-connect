@@ -351,7 +351,6 @@ export default function Game() {
       {phase === 'cleared' && (
         <div className="overlay overlay-clear">
           <div className="result-card result-card-clear">
-            <div className="result-rays" />
 
             {/* 트로피 아이콘 + 빛살 (같은 래퍼 → 트로피 중심 기준 회전) */}
             <div className="result-icon-area">
