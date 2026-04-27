@@ -6,4 +6,15 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor':    ['react', 'react-dom'],
+          'firebase-vendor': ['firebase/app', 'firebase/firestore', 'firebase/analytics'],
+          'icons':           ['lucide-react'],
+        },
+      },
+    },
+  },
 })
