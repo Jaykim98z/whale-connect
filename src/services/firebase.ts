@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
   getFirestore, collection, addDoc, getDocs, deleteDoc, doc,
-  query, orderBy, limit, where, serverTimestamp, Timestamp,
+  query, orderBy, limit, where, serverTimestamp, writeBatch, Timestamp,
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -141,8 +141,10 @@ async function cleanupOldRankings() {
   try {
     const q = query(collection(db, 'wc-rankings'), orderBy('score', 'desc'));
     const snap = await getDocs(q);
-    if (snap.docs.length > 100) {
-      for (const d of snap.docs.slice(100)) await deleteDoc(doc(db, 'wc-rankings', d.id));
-    }
+    const overflow = snap.docs.slice(100);
+    if (overflow.length === 0) return;
+    const batch = writeBatch(db);
+    overflow.forEach(d => batch.delete(doc(db, 'wc-rankings', d.id)));
+    await batch.commit();
   } catch { /* ignore */ }
 }
