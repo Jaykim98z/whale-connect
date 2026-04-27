@@ -10,7 +10,9 @@
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![License](https://img.shields.io/badge/License-MIT-green)](#)
 
-[▶ 플레이하기](#) · [📊 랭킹 보기](#) · [🐛 버그 제보](https://github.com/Jaykim98z/whale-connect/issues)
+### [▶ 지금 바로 플레이하기](https://whale-connect.web.app)
+
+[🐛 버그 제보](https://github.com/Jaykim98z/whale-connect/issues)
 
 </div>
 
@@ -21,7 +23,7 @@
 **고래사천성**은 SOOP(구 아프리카TV) 스트리머 그룹 **고래상사**의 팬 게임입니다.  
 18명의 멤버 캐릭터 카드를 마작 패 연결 방식(사천성 룰)으로 제거하며, 5개 스테이지를 통해 점수를 겨루는 퍼즐 게임입니다.
 
-SOOP 아이디로 실명 로그인 없이 닉네임을 자동 조회하고, 전 세계 TOP 100 랭킹에 점수를 등록할 수 있습니다.
+SOOP 아이디로 닉네임·프로필 이미지를 자동 조회하고, 전 세계 TOP 100 랭킹에 점수를 등록할 수 있습니다.
 
 > 이 프로젝트는 **백엔드 없이 클라이언트 단독**으로 동작합니다.  
 > 경로 탐색 알고리즘, 반응형 보드 레이아웃, Web Audio API 사운드 합성 등 프론트엔드 심화 기법을 집약했습니다.
@@ -36,9 +38,10 @@ SOOP 아이디로 실명 로그인 없이 닉네임을 자동 조회하고, 전 
 | 🔗 **경로 연결 알고리즘** | 0·1·2회 꺾임 허용, 장애물 우회, 보드 외곽 통과 지원 |
 | ⏱️ **실시간 타이머** | 100초 제한, 판 클리어 시 +60초 보너스 |
 | 🎁 **아이템 카드** | 시간추가(+5초), 셔플(보드 재배치) |
-| 🚧 **장애물 타일** | 경로를 막는 고정 타일 (스테이지 3부터 등장) |
+| 🚧 **장애물 타일** | 경로를 막는 고정 타일 (스테이지 2부터 등장) |
+| 🏆 **5스테이지 클리어 엔딩** | 전 스테이지 클리어 시 전용 결과 화면 + 잔여 시간 보너스 |
 | 🔊 **Web Audio 사운드** | 외부 파일 없이 Web Audio API로 실시간 사운드 합성 |
-| 🏆 **글로벌 랭킹** | Firebase Firestore 기반 TOP 100 실시간 랭킹 |
+| 🌐 **글로벌 랭킹** | Firebase Firestore 기반 TOP 100 실시간 랭킹 |
 | 👤 **SOOP 프로필 연동** | SOOP API로 닉네임·프로필 이미지 자동 조회 |
 | 🔇 **음소거** | localStorage 기반 설정 영속 저장 |
 | 📱 **반응형** | `dvh` + CSS `min()` 공식으로 모바일~데스크탑 대응 |
@@ -78,7 +81,8 @@ SOOP 아이디로 실명 로그인 없이 닉네임을 자동 조회하고, 전 
 2. 연결 경로는 최대 2번까지 꺾일 수 있습니다.
 3. 경로는 빈 칸만 통과할 수 있습니다 (장애물 통과 불가).
 4. 보드의 모든 카드를 제거하면 다음 스테이지로 진출합니다.
-5. 시간이 0이 되면 게임 종료, 점수를 랭킹에 등록하세요!
+5. 5스테이지를 모두 클리어하면 전용 엔딩 화면과 함께 최종 점수가 집계됩니다.
+6. 시간이 0이 되면 게임 종료 — 점수를 랭킹에 등록하세요!
 ```
 
 ### 점수 체계
@@ -86,11 +90,11 @@ SOOP 아이디로 실명 로그인 없이 닉네임을 자동 조회하고, 전 
 |--------|------|
 | 카드 1쌍 매칭 | +10점 |
 | 판 클리어 보너스 | +100점 |
-| 남은 시간 보너스 | +(잔여 초 × 10)점 |
+| 남은 시간 보너스 (전 클리어 시) | +(잔여 초 × 10)점 |
 
 ### 아이템
 - ⏱️ **시간추가 카드** — 매칭 시 +5초
-- 🔀 **셔플 카드** — 매칭 시 셔플 1회 충전 → 우측 HUD 버튼으로 사용
+- 🔀 **셔플 카드** — 매칭 시 셔플 1회 충전 → HUD 버튼으로 사용
 
 ---
 
@@ -198,13 +202,42 @@ MP3/WAV 파일 없이 **브라우저 내장 Web Audio API**로 3종 효과음을
 1. 동일 `soopId`의 기존 점수 조회
 2. 새 점수가 기존보다 낮으면 저장 거부
 3. 높으면 기존 문서 삭제 후 새 문서 추가 (upsert)
-4. 저장 후 TOP 100 초과 문서 자동 정리
+4. 저장 후 TOP 100 초과 문서를 `WriteBatch`로 원자적 일괄 삭제
+
+**보안 규칙:**  
+Firestore Security Rules로 클라이언트 조작을 방어합니다.
+- `score` 범위 강제 (0 < score ≤ 99999)
+- `timestamp` 서버 타임스탬프 일치 검증 (클라이언트 임의값 차단)
+- `update` 전면 차단 (기존 기록 조작 불가)
+- 필드 타입·길이 강제 (playerName, soopId 1~50자)
 
 **고래상사 멤버 전용 랭킹:** `wc-rankings-wc` 컬렉션에 별도 저장, 멤버 전용 순위표 제공
 
 ---
 
-### 5. React StrictMode 대응 — 순수 updater 함수
+### 5. countPossiblePairs 성능 최적화 (`boardLogic.ts`)
+
+가능한 매칭 쌍을 계산할 때, 타입이 다른 카드끼리는 절대 매칭되지 않으므로 **Map으로 타입별 그룹핑** 후 같은 타입끼리만 경로 탐색합니다.
+
+```typescript
+// 타입별로 셀을 그룹화 → 같은 타입 내에서만 findPath 호출
+const groups = new Map<number, { r: number; c: number }[]>();
+for (let r = 0; r < rows; r++) {
+  for (let c = 0; c < cols; c++) {
+    const v = board[r][c];
+    if (v === null || v === OBSTACLE_ID) continue;
+    const group = groups.get(v);
+    if (group) group.push({ r, c });
+    else groups.set(v, [{ r, c }]);
+  }
+}
+```
+
+> S5 기준: 전체 비교 루프 **8,911회 → 406회** (약 95% 감소)
+
+---
+
+### 6. React StrictMode 대응 — 순수 updater 함수
 
 React 18+ StrictMode에서 `setState` updater는 **2회 호출**될 수 있습니다.  
 ref 뮤테이션을 updater 내부에서 수행하면 중복 실행 시 버그가 발생하므로, 부수효과를 updater 바깥으로 분리했습니다.
@@ -219,9 +252,7 @@ setBoard(prev => {
 // After (순수 함수)
 pendingRef.current.delete(keyA);  // updater 외부에서 처리
 pendingRef.current.delete(keyB);
-setBoard(prev => {
-  return nextBoard;                // 순수 계산만 수행
-});
+setBoard(prev => nextBoard);      // 순수 계산만 수행
 ```
 
 ---
@@ -234,7 +265,7 @@ setBoard(prev => {
 | 2 | 8 × 12 | 4개 | 92장 | 장애물 첫 등장 |
 | 3 | 8 × 14 | 6개 | 106장 | 아이템 카드 증가 |
 | 4 | 8 × 16 | 8개 | 120장 | 고난이도 |
-| 5 | 8 × 18 | 10개 | 134장 | 최고 난이도 |
+| 5 | 8 × 18 | 10개 | 134장 | 최고 난이도, 클리어 시 전용 엔딩 |
 
 ---
 
@@ -323,11 +354,9 @@ VITE_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
 
 ## 🗺️ 향후 개선 계획
 
-- [ ] Firestore 보안 규칙 강화 및 Cloud Functions 서버사이드 점수 검증
-- [ ] 5스테이지 클리어 전용 엔딩 화면
-- [ ] `WriteBatch`로 랭킹 정리 성능 최적화
-- [ ] `countPossiblePairs` 증분 업데이트 (O(n²) → O(n) 개선)
-- [ ] `prefers-reduced-motion` 접근성 지원
+- [ ] Cloud Functions 서버사이드 점수 검증 (Firebase Blaze 플랜 업그레이드 시)
+- [ ] 번들 코드 스플리팅 (현재 단일 청크 511KB)
+- [ ] 모바일 터치 최적화 및 PWA 지원
 
 ---
 
@@ -342,6 +371,6 @@ MIT License — 자유롭게 사용·수정·배포 가능합니다.
 
 **고래상사 팬 게임** · Made with ❤️ by Jay
 
-[⬆ 맨 위로](#-고래사천성--whale-connect)
+[▶ 플레이하기](https://whale-connect.web.app) · [⬆ 맨 위로](#-고래사천성--whale-connect)
 
 </div>
