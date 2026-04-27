@@ -551,9 +551,9 @@
     transparent 342deg, rgba(255,209,102,0.28) 351deg,
     transparent 360deg
   );
-  /* 중앙에서 외곽으로 갈수록 자연스럽게 페이드아웃 */
-  mask-image: radial-gradient(circle, white 0%, rgba(255,255,255,0.6) 50%, transparent 75%);
-  -webkit-mask-image: radial-gradient(circle, white 0%, rgba(255,255,255,0.6) 50%, transparent 75%);
+  /* 중앙(트로피) 투명 → 링에서 나타남 → 외곽 페이드아웃 */
+  mask-image: radial-gradient(circle, transparent 22%, white 38%, rgba(255,255,255,0.5) 62%, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle, transparent 22%, white 38%, rgba(255,255,255,0.5) 62%, transparent 78%);
   animation: raysRotate 14s linear infinite;
   pointer-events: none;
   z-index: 0;
