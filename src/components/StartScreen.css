@@ -288,6 +288,26 @@
   box-shadow: 0 4px 12px rgba(78,197,224,0.2);
 }
 
+/* ── 엔딩 미리보기 버튼 (개발/확인용 — 눈에 띄지 않게) ── */
+.ss-btn-preview {
+  background: none;
+  border: 1px dashed rgba(78,197,224,0.25);
+  border-radius: 20px;
+  color: #aac8d8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 5px 14px;
+  margin-top: -6px;
+  transition: color 0.15s, border-color 0.15s, opacity 0.15s;
+  opacity: 0.6;
+}
+.ss-btn-preview:hover {
+  color: #2b9ed4;
+  border-color: rgba(78,197,224,0.6);
+  opacity: 1;
+}
+
 /* ── 도움말 ── */
 .ss-help-wrap {
   position: absolute;

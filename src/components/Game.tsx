@@ -5,7 +5,7 @@ import type { Board as BoardState } from '../game/boardLogic';
 import { findPath } from '../game/connectLogic';
 import {
   TIME_LIMIT, TIME_CLEAR_BONUS, SCORE_PER_MATCH,
-  TIME_ADD_SECONDS, BOARD_CLEAR_BONUS, ITEM_TIME_ID, ITEM_SHUFFLE_ID, OBSTACLE_ID
+  TIME_ADD_SECONDS, BOARD_CLEAR_BONUS, TIME_BONUS_MULTIPLIER, ITEM_TIME_ID, ITEM_SHUFFLE_ID, OBSTACLE_ID
 } from '../game/constants';
 import { playCardSelect, playMatchSuccess, playMatchFail, setMuted, getMuted } from '../game/sounds';
 import Board from './Board';
@@ -14,7 +14,7 @@ import RankingModal from './Ranking/RankingModal';
 import RankingRegisterModal from './Ranking/RankingRegisterModal';
 import './Game.css';
 
-type GamePhase = 'title' | 'playing' | 'gameover';
+type GamePhase = 'title' | 'playing' | 'gameover' | 'cleared';
 
 const PATH_SHOW_MS = 200;
 const MATCH_ANIM_MS = 220;
@@ -62,6 +62,7 @@ export default function Game() {
   const [shuffleCharge, setShuffleCharge] = useState(0);
   const [isMuted, setIsMuted] = useState(() => getMuted());
   const [showHomeConfirm, setShowHomeConfirm] = useState(false);
+  const [clearStats, setClearStats] = useState({ matchScore: 0, clearBonus: 0, timeBonus: 0 });
 
   const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingRef      = useRef<Set<string>>(new Set());
@@ -165,6 +166,14 @@ export default function Game() {
   const handleCancelHome = () => {
     setShowHomeConfirm(false);
     setIsPaused(false);
+  };
+
+  // 엔딩 화면 미리보기 (타이틀에서 플레이 없이 확인용)
+  const handlePreviewEnding = () => {
+    const mockFinal = 5_280;
+    setFinalScore(mockFinal);
+    setClearStats({ matchScore: 4_280, clearBonus: 500, timeBonus: 500 });
+    setPhase('cleared');
   };
 
   // 음소거 토글
@@ -279,14 +288,32 @@ export default function Game() {
         if (willClear) {
           scoreRef.current += BOARD_CLEAR_BONUS;
           setScore(scoreRef.current);
-          timeRef.current = timeRef.current + TIME_CLEAR_BONUS;
-          setTimeLeft(t => t + TIME_CLEAR_BONUS);
-          showItemMsg(`판 클리어! +${BOARD_CLEAR_BONUS}`);
-          setStage(prev => prev + 1);
-          // stage state는 비동기이므로 직접 계산
-          const nextStage = stage + 1;
-          const { rows, cols, counts, obstacleCount } = getBoardConfig(nextStage);
-          nextBoard = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
+
+          if (stage >= 5) {
+            // 🎉 전 스테이지 클리어!
+            const timeBonus  = timeRef.current * TIME_BONUS_MULTIPLIER;
+            const totalClear = 5 * BOARD_CLEAR_BONUS;           // 500
+            const matchScore = scoreRef.current - totalClear;   // 순수 매칭 점수
+            scoreRef.current += timeBonus;
+            setScore(scoreRef.current);
+            setFinalScore(scoreRef.current);
+            setClearStats({ matchScore, clearBonus: totalClear, timeBonus });
+            // nextBoard = null → 마지막 카드 2장만 제거 후 빈 보드 노출
+            // 짧은 딜레이 후 엔딩 화면 전환
+            setTimeout(() => {
+              stopTimer();
+              setPhase('cleared');
+            }, 420);
+          } else {
+            timeRef.current = timeRef.current + TIME_CLEAR_BONUS;
+            setTimeLeft(t => t + TIME_CLEAR_BONUS);
+            showItemMsg(`판 클리어! +${BOARD_CLEAR_BONUS}`);
+            setStage(prev => prev + 1);
+            // stage state는 비동기이므로 직접 계산
+            const nextStage = stage + 1;
+            const { rows, cols, counts, obstacleCount } = getBoardConfig(nextStage);
+            nextBoard = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
+          }
         }
 
         // ── pending 해제: 업데이터 밖에서 처리 (순수 함수 원칙) ──
@@ -302,7 +329,7 @@ export default function Game() {
         });
       }, MATCH_ANIM_MS);
     }, PATH_SHOW_MS);
-  }, [phase, board, selected, isPaused]);
+  }, [phase, board, selected, isPaused, stage, stopTimer]);
 
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60).toString().padStart(2, '0');
@@ -314,11 +341,70 @@ export default function Game() {
   const timerColor = timeRatio > 0.4 ? '#4ecdc4' : timeRatio > 0.2 ? '#ffd166' : '#ef4444';
 
   if (phase === 'title') {
-    return <StartScreen onStart={startGame} />;
+    return <StartScreen onStart={startGame} onPreviewEnding={handlePreviewEnding} />;
   }
 
   return (
     <div className="game-wrap">
+
+      {/* 전 스테이지 클리어 엔딩 */}
+      {phase === 'cleared' && (
+        <div className="overlay overlay-clear">
+          <div className="result-card result-card-clear">
+            <div className="result-rays" />
+
+            {/* 트로피 아이콘 */}
+            <div className="result-icon-wrap result-icon-clear">
+              <Trophy size={44} strokeWidth={1.5} />
+            </div>
+
+            {/* 타이틀 */}
+            <h2 className="result-title result-title-clear">CLEAR!</h2>
+            <p className="result-sub">⭐ 5스테이지 전 클리어 달성! ⭐</p>
+
+            <div className="result-divider" />
+
+            {/* 점수 Breakdown */}
+            <div className="result-breakdown">
+              <div className="result-breakdown-row">
+                <span>매칭 점수</span>
+                <span>{clearStats.matchScore.toLocaleString()}점</span>
+              </div>
+              <div className="result-breakdown-row result-breakdown-bonus">
+                <span>스테이지 클리어 ×5</span>
+                <span>+{clearStats.clearBonus.toLocaleString()}점</span>
+              </div>
+              <div className="result-breakdown-row result-breakdown-bonus">
+                <span>잔여 시간 보너스</span>
+                <span>+{clearStats.timeBonus.toLocaleString()}점</span>
+              </div>
+            </div>
+
+            {/* 최종 점수 */}
+            <div className="result-score-block">
+              <span className="result-score-label">최종 점수</span>
+              <span className="result-score result-score-clear">
+                {finalScore.toLocaleString()}<small>점</small>
+              </span>
+            </div>
+
+            <div className="result-divider" />
+
+            {/* 버튼 */}
+            <div className="result-btns">
+              <button className="btn btn-gold" onClick={() => setShowRegister(true)}>
+                <Trophy size={14} /> 랭킹 등록
+              </button>
+              <button className="btn btn-primary" onClick={startGame}>
+                <RefreshCw size={14} /> 다시 시작
+              </button>
+              <button className="btn btn-ghost" onClick={() => setPhase('title')}>
+                <Home size={14} /> 타이틀로
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 게임 오버 */}
       {phase === 'gameover' && (
