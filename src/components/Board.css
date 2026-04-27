@@ -1,0 +1,74 @@
+/* ── 보드 ── */
+/* COLS=10, ROWS=8, 카드 비율 3:4(CELL_W=75, CELL_H=100)
+   TOTAL_W=802, TOTAL_H=844 → aspect-ratio = 802/844 ≈ 0.95 */
+.board {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), 1fr);
+  gap: 4px;
+  /*
+   * ── 보드 크기 명시적 계산 ──
+   * 아이템 카드(lucide 인라인 SVG)나 빈 셀에는 intrinsic size가 없어서
+   * max-width/aspect-ratio만으로는 board가 0으로 쪼그라드는 버그 방지.
+   * min() 으로 height-bound / width-bound 두 경우 모두 올바른 크기를 명시.
+   *
+   * --board-w, --board-h : SVG 좌표계 기준 정수 (Board.tsx에서 inline style로 주입)
+   * height-bound 경우: width  = (max-height) × (W/H)
+   * width-bound  경우: height = (max-width)  × (H/W)
+   */
+  --bmax-w: 82vw;
+  --bmax-h: calc(100dvh - 180px);
+  width:  min(var(--bmax-w),  calc(var(--bmax-h) * var(--board-w) / var(--board-h)));
+  height: min(var(--bmax-h),  calc(var(--bmax-w) * var(--board-h) / var(--board-w)));
+  padding: 8px;
+
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(6px);
+  border-radius: 18px;            /* gap으로 분리됐으므로 전체 둥글게 */
+  border: 2px solid rgba(184,228,245,0.8);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.6) inset,
+    0 6px 32px rgba(78,197,224,0.16),
+    0 2px 6px rgba(0,0,0,0.06);
+  position: relative;
+}
+
+/* ── 빈 셀 슬롯 (카드 제거 후 자리 표시) ── */
+.board-cell {
+  border-radius: 7px;
+  overflow: hidden;
+  position: relative;
+}
+
+.board-cell-empty {
+  border-radius: 7px;
+  background: rgba(78,197,224,0.04);
+  box-shadow: inset 0 0 0 1.5px rgba(78,197,224,0.13);
+}
+
+/* ── 모바일 ── */
+@media (max-width: 600px) {
+  .board {
+    /* board-wrap이 flex:1로 남은 공간을 주므로, 그 안에서 명시적 크기 계산 */
+    --bmax-w: calc(100vw - 12px);
+    --bmax-h: calc(100dvh - 70px); /* HUD(~58px) + board-wrap padding(12px) */
+    width:  min(var(--bmax-w),  calc(var(--bmax-h) * var(--board-w) / var(--board-h)));
+    height: min(var(--bmax-h),  calc(var(--bmax-w) * var(--board-h) / var(--board-w)));
+    border-radius: 12px;
+    padding: 5px;
+    gap: 3px;
+  }
+  .board-cell       { border-radius: 4px; }
+  .board-cell-empty { border-radius: 4px; }
+}
+
+/* ── SVG 오버레이 ── */
+.path-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  overflow: visible;
+}

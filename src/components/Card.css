@@ -1,0 +1,201 @@
+/* ── 카드 기본: 고유 컬러로 전체 배경 채움 ── */
+.card {
+  width: 100%;
+  height: 100%;
+  border-radius: 7px;
+  cursor: pointer;
+
+  /* 캐릭터 고유색으로 전체 채움 */
+  background: var(--card-color);
+
+  /* 흰 테두리로 카드 프레임 느낌 */
+  border: 2px solid rgba(255, 255, 255, 0.75);
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.55) inset,  /* 상단 광택 */
+    0 2px 0 rgba(0,0,0,0.12),
+    0 4px 10px rgba(0,0,0,0.10);
+
+  transition: transform 0.13s ease, box-shadow 0.13s ease, border-color 0.13s ease;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  display: flex;
+  align-items: stretch;
+}
+
+/* 상단 광택 오버레이 */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.38) 0%, transparent 100%);
+  border-radius: 5px 5px 40% 40%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.card:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.55) inset,
+    0 8px 0 rgba(0,0,0,0.08),
+    0 10px 22px rgba(0,0,0,0.14);
+  z-index: 4;
+  border-color: rgba(255,255,255,0.95);
+}
+
+/* ── 선택됨: 금색 테두리 + 글로우 ── */
+.card-selected {
+  border: 2.5px solid #ff8c00 !important;
+  box-shadow:
+    0 0 0 3px rgba(255,209,102,0.55),
+    0 6px 22px rgba(255,140,0,0.35) !important;
+  transform: translateY(-4px) scale(1.07) !important;
+  z-index: 5;
+}
+
+/* ── 경로 위: 하늘색 테두리 + 글로우 ── */
+.card-on-path {
+  border: 2.5px solid #fff !important;
+  box-shadow:
+    0 0 0 3px rgba(78,197,224,0.55),
+    0 4px 16px rgba(78,197,224,0.35) !important;
+  filter: brightness(1.1);
+}
+
+/* ── 아이템 카드: 검은 배경에 흰 테두리 강조 ── */
+.card-item {
+  border-color: rgba(255,255,255,0.35) !important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.15) inset,
+    0 2px 0 rgba(0,0,0,0.35),
+    0 4px 14px rgba(0,0,0,0.3);
+}
+
+.card-item::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%);
+}
+
+/* ── 매칭 → 뒤집기 모션 ── */
+.card-matched {
+  animation: cardFlip 0.22s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes cardFlip {
+  0%   { transform: perspective(350px) rotateY(0deg) scale(1);    opacity: 1; }
+  40%  { transform: perspective(350px) rotateY(90deg) scale(1.08); opacity: 1; filter: brightness(1.7); }
+  41%  { transform: perspective(350px) rotateY(90deg) scale(1.08); opacity: 0; }
+  100% { transform: perspective(350px) rotateY(90deg) scale(0.4);  opacity: 0; }
+}
+
+/* ── 캐릭터 이미지 ── */
+.card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  padding: 6% 5%;
+  box-sizing: border-box;
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
+  /* 이미지 밝기 약간 높여 색 배경 위에서도 선명하게 */
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.18));
+}
+
+/* ── 모바일: 카드 hover 비활성화 (터치 디바이스) ── */
+@media (hover: none) {
+  .card:hover {
+    transform: none;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.55) inset,
+      0 2px 0 rgba(0,0,0,0.12),
+      0 4px 10px rgba(0,0,0,0.10);
+    z-index: auto;
+    border-color: rgba(255,255,255,0.75);
+  }
+}
+
+/* ── 장애물 카드: 방지턱 빗금 ── */
+.card-obstacle {
+  cursor: default !important;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #ffd166 0px,
+      #ffd166 9px,
+      #2a2a2a 9px,
+      #2a2a2a 18px
+    );
+  border: 2.5px solid #e6a800 !important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.18) inset,
+    0 3px 0 rgba(0,0,0,0.5),
+    0 4px 12px rgba(0,0,0,0.28) !important;
+  /* 테두리 위 얇은 테두리로 입체감 */
+  outline: 1.5px solid rgba(0,0,0,0.35);
+  outline-offset: -4px;
+}
+
+.card-obstacle-lock {
+  position: relative;
+  z-index: 2;
+  width: 38% !important;
+  height: auto !important;
+  color: rgba(255,255,255,0.9);
+  filter:
+    drop-shadow(0 0 4px rgba(0,0,0,0.8))
+    drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+  flex-shrink: 0;
+}
+
+/* 상단 광택 유지 (살짝 어둡게) */
+.card-obstacle::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, transparent 60%);
+}
+
+.card-obstacle:hover {
+  transform: none !important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.18) inset,
+    0 3px 0 rgba(0,0,0,0.5),
+    0 4px 12px rgba(0,0,0,0.28) !important;
+}
+
+/* ── 아이템 카드 아이콘 레이아웃 ── */
+.card-item-icon {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6%;
+  padding: 10% 8%;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+.card-item-svg {
+  /* 카드 너비의 ~55% 차지 */
+  width: 55% !important;
+  height: auto !important;
+  color: #ffffff;
+  filter: drop-shadow(0 2px 6px rgba(255,255,255,0.25));
+  flex-shrink: 0;
+}
+
+.card-item-label {
+  font-size: clamp(5px, 0.7vw, 8px);
+  font-weight: 700;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.3px;
+  text-align: center;
+  line-height: 1;
+}
