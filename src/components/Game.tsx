@@ -499,7 +499,6 @@ export default function Game() {
                   {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                 </button>
                 <div className="hud-volume-popup">
-                  <span className="hud-volume-pct">{Math.round(bgmVolume * 100)}%</span>
                   <input
                     type="range"
                     className="hud-volume-slider"
@@ -507,7 +506,6 @@ export default function Game() {
                     value={bgmVolume}
                     onChange={e => handleVolumeChange(Number(e.target.value))}
                   />
-                  <VolumeX size={10} className="hud-volume-icon-low" />
                 </div>
               </div>
               <button className="hud-btn" title="랭킹" onClick={() => setShowRanking(true)}>

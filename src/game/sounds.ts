@@ -17,7 +17,7 @@ function getBGM(): HTMLAudioElement {
   if (!_bgm) {
     _bgm = new Audio('/sounds/bgm.mp3');
     _bgm.loop   = true;
-    _bgm.volume = 0.35;
+    _bgm.volume = 0.5;
   }
   return _bgm;
 }

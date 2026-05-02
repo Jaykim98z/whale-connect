@@ -443,7 +443,17 @@
   position: relative;
 }
 
-/* hover 시 HUD 스택 순서를 board-wrap(z-index:20)보다 높게 올려 팝업이 가려지지 않도록 */
+/* 버튼과 팝업 사이 갭(8px)을 보이지 않는 영역으로 채워 hover 끊김 방지 */
+.hud-volume-wrap::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
+
+/* hover 시 HUD를 board-wrap(z-index:20)보다 위로 올려 팝업이 가려지지 않도록 */
 .hud:has(.hud-volume-wrap:hover) {
   z-index: 30;
 }
@@ -452,16 +462,13 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 160px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: rgba(255,255,255,0.97);
   border: 2px solid #b8e4f5;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 6px 20px rgba(78,197,224,0.25);
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 8px;
   z-index: 200;
   opacity: 0;
   pointer-events: none;
@@ -475,25 +482,12 @@
   transform: translateY(0);
 }
 
-.hud-volume-pct {
-  font-size: 11px;
-  font-weight: 700;
-  color: #2b9ed4;
-  line-height: 1;
-  min-width: 30px;
-  text-align: right;
-}
-
 .hud-volume-slider {
-  flex: 1;
+  width: 100px;
   height: 4px;
   cursor: pointer;
   accent-color: #4ec5e0;
-}
-
-.hud-volume-icon-low {
-  color: #9ab8cc;
-  flex-shrink: 0;
+  display: block;
 }
 
 /* ── Item message ── */
