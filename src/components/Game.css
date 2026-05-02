@@ -443,54 +443,57 @@
   position: relative;
 }
 
+/* hover 시 HUD 스택 순서를 board-wrap(z-index:20)보다 높게 올려 팝업이 가려지지 않도록 */
+.hud:has(.hud-volume-wrap:hover) {
+  z-index: 30;
+}
+
 .hud-volume-popup {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 44px;
-  padding: 10px 6px 8px;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 160px;
+  padding: 10px 12px;
   background: rgba(255,255,255,0.97);
   border: 2px solid #b8e4f5;
   border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(78,197,224,0.2);
+  box-shadow: 0 6px 20px rgba(78,197,224,0.25);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   z-index: 200;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s, transform 0.15s;
-  transform: translateX(-50%) translateY(-4px);
+  transform: translateY(-4px);
 }
 
 .hud-volume-wrap:hover .hud-volume-popup {
   opacity: 1;
   pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0);
 }
 
 .hud-volume-pct {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: #2b9ed4;
   line-height: 1;
+  min-width: 30px;
+  text-align: right;
 }
 
 .hud-volume-slider {
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 22px;
-  height: 80px;
+  flex: 1;
+  height: 4px;
   cursor: pointer;
   accent-color: #4ec5e0;
-  appearance: slider-vertical;
-  -webkit-appearance: slider-vertical;
 }
 
 .hud-volume-icon-low {
   color: #9ab8cc;
+  flex-shrink: 0;
 }
 
 /* ── Item message ── */
