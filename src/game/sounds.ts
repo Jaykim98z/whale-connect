@@ -40,6 +40,17 @@ export function stopBGM() {
   } catch {}
 }
 
+/** BGM 볼륨 설정 (0~1) */
+export function setBGMVolume(vol: number) {
+  const clamped = Math.max(0, Math.min(1, vol));
+  try { getBGM().volume = clamped; } catch {}
+}
+
+/** 현재 BGM 볼륨 반환 */
+export function getBGMVolume(): number {
+  try { return getBGM().volume; } catch { return 0.35; }
+}
+
 // ── AudioContext ──
 let ctx: AudioContext | null = null;
 

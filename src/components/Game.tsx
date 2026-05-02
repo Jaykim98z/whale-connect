@@ -7,7 +7,7 @@ import {
   TIME_LIMIT, TIME_CLEAR_BONUS, SCORE_PER_MATCH,
   TIME_ADD_SECONDS, BOARD_CLEAR_BONUS, TIME_BONUS_MULTIPLIER, ITEM_TIME_ID, ITEM_SHUFFLE_ID, OBSTACLE_ID
 } from '../game/constants';
-import { playCardSelect, playMatchSuccess, playMatchFail, playBGM, pauseBGM, stopBGM, setMuted, getMuted } from '../game/sounds';
+import { playCardSelect, playMatchSuccess, playMatchFail, playBGM, pauseBGM, stopBGM, setMuted, getMuted, setBGMVolume, getBGMVolume } from '../game/sounds';
 import Board from './Board';
 import StartScreen from './StartScreen';
 import RankingModal from './Ranking/RankingModal';
@@ -70,6 +70,7 @@ export default function Game() {
   const [itemMsg, setItemMsg] = useState<string | null>(null);
   const [shuffleCharge, setShuffleCharge] = useState(0);
   const [isMuted, setIsMuted] = useState(() => getMuted());
+  const [bgmVolume, setBgmVolume] = useState(() => getBGMVolume());
   const [showHomeConfirm, setShowHomeConfirm] = useState(false);
   const [clearStats, setClearStats] = useState({ matchScore: 0, clearBonus: 0, timeBonus: 0 });
 
@@ -189,6 +190,14 @@ export default function Game() {
     const next = !isMuted;
     setIsMuted(next);
     setMuted(next);
+  };
+
+  // BGM 볼륨 조절
+  const handleVolumeChange = (val: number) => {
+    setBgmVolume(val);
+    setBGMVolume(val);
+    if (val === 0 && !isMuted) { setIsMuted(true); setMuted(true); }
+    else if (val > 0 && isMuted) { setIsMuted(false); setMuted(false); }
   };
 
   const handleManualShuffle = () => {
@@ -481,13 +490,26 @@ export default function Game() {
                   </span>
                 )}
               </button>
-              <button
-                className={`hud-btn ${isMuted ? 'hud-btn-muted' : ''}`}
-                title={isMuted ? '소리 켜기' : '소리 끄기'}
-                onClick={handleToggleMute}
-              >
-                {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-              </button>
+              <div className="hud-volume-wrap">
+                <button
+                  className={`hud-btn ${isMuted ? 'hud-btn-muted' : ''}`}
+                  title={isMuted ? '소리 켜기' : '소리 끄기'}
+                  onClick={handleToggleMute}
+                >
+                  {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                </button>
+                <div className="hud-volume-popup">
+                  <span className="hud-volume-pct">{Math.round(bgmVolume * 100)}%</span>
+                  <input
+                    type="range"
+                    className="hud-volume-slider"
+                    min={0} max={1} step={0.05}
+                    value={bgmVolume}
+                    onChange={e => handleVolumeChange(Number(e.target.value))}
+                  />
+                  <VolumeX size={10} className="hud-volume-icon-low" />
+                </div>
+              </div>
               <button className="hud-btn" title="랭킹" onClick={() => setShowRanking(true)}>
                 <Trophy size={16} />
               </button>
