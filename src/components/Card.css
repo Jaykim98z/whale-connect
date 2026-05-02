@@ -24,17 +24,6 @@
   align-items: stretch;
 }
 
-/* 상단 광택 오버레이 */
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 40%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.38) 0%, transparent 100%);
-  border-radius: 5px 5px 40% 40%;
-  pointer-events: none;
-  z-index: 2;
-}
 
 .card:hover {
   transform: translateY(-4px) scale(1.05);
@@ -73,9 +62,6 @@
     0 4px 14px rgba(0,0,0,0.3);
 }
 
-.card-item::before {
-  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%);
-}
 
 /* ── 매칭 → 뒤집기 모션 ── */
 .card-matched {
@@ -153,10 +139,6 @@
   flex-shrink: 0;
 }
 
-/* 상단 광택 유지 (살짝 어둡게) */
-.card-obstacle::before {
-  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, transparent 60%);
-}
 
 .card-obstacle:hover {
   transform: none !important;
