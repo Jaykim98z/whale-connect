@@ -39,11 +39,10 @@
 .card:hover {
   transform: translateY(-4px) scale(1.05);
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.55) inset,
     0 8px 0 rgba(0,0,0,0.08),
     0 10px 22px rgba(0,0,0,0.14);
   z-index: 4;
-  border-color: rgba(255,255,255,0.95);
+  border-color: transparent;
 }
 
 /* ── 선택됨: 금색 테두리 + 글로우 ── */
