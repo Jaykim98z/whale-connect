@@ -1,6 +1,6 @@
 export const ROWS = 8;
 export const COLS = 10;
-export const CARD_TYPES = 20;       // 18 캐릭터 + 2 아이템
+export const CARD_TYPES = 18;       // 16 캐릭터 + 2 아이템
 export const CARDS_PER_TYPE = 4;
 export const TIME_LIMIT = 100;      // 초기 시간 1분40초 = 100초
 export const TIME_CLEAR_BONUS = 60; // 판 클리어 시 +60초 추가
@@ -10,8 +10,8 @@ export const TIME_ADD_SECONDS = 5;
 export const BOARD_CLEAR_BONUS = 100; // 판 클리어 보너스
 export const MAX_TURNS = 2;
 
-export const ITEM_TIME_ID = 18;
-export const ITEM_SHUFFLE_ID = 19;
+export const ITEM_TIME_ID = 16;
+export const ITEM_SHUFFLE_ID = 17;
 export const OBSTACLE_ID = -1;  // 부셔지지 않는 장애물 타일
 
 export interface CardDef {
@@ -41,9 +41,7 @@ export const CARD_DEFS: CardDef[] = [
   { id: 12, name: '이지수',   color: '#A882B6', textColor: '#ffffff', image: '/chars/이지수.svg',   isItem: false },
   { id: 13, name: '조아라',   color: '#FF8058', textColor: '#ffffff', image: '/chars/조아라.svg',   isItem: false },
   { id: 14, name: '채하나',   color: '#FEF4F5', textColor: '#3a1a1a', image: '/chars/채하나.svg',   isItem: false },
-  { id: 15, name: '최은뽀',   color: '#FEB24C', textColor: '#3d1f00', image: '/chars/최은뽀.svg',   isItem: false },
-  { id: 16, name: '히무루',   color: '#D3DDFF', textColor: '#0a1a55', image: '/chars/히무루.svg',   isItem: false },
-  { id: 17, name: '희희덕',   color: '#FFEC65', textColor: '#3a3300', image: '/chars/희희덕.svg',   isItem: false },
-  { id: 18, name: '시간추가', color: '#222222', textColor: '#ffffff', image: '/item/time.svg',      isItem: true, itemEffect: 'time'    },
-  { id: 19, name: '셔플',     color: '#222222', textColor: '#ffffff', image: '/item/shuffle.svg',   isItem: true, itemEffect: 'shuffle' },
+  { id: 15, name: '희희덕',   color: '#FFEC65', textColor: '#3a3300', image: '/chars/희희덕.svg',   isItem: false },
+  { id: 16, name: '시간추가', color: '#222222', textColor: '#ffffff', image: '/item/time.svg',      isItem: true, itemEffect: 'time'    },
+  { id: 17, name: '셔플',     color: '#222222', textColor: '#ffffff', image: '/item/shuffle.svg',   isItem: true, itemEffect: 'shuffle' },
 ];

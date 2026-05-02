@@ -22,22 +22,22 @@ const AUTO_SHUFFLE_DELAY_MS = 1200;
 const SHUFFLE_CHARGE_THRESHOLD = 1; // 셔플 아이템 1쌍 제거 시 셔플 1회 충전
 
 // 스테이지별 보드 설정
-// counts 배열: [id0..id17]=캐릭터, [id18]=시간추가, [id19]=셔플  (짝수만 가능)
+// counts 배열: [id0..id15]=캐릭터(16종), [id16]=시간추가, [id17]=셔플  (짝수만 가능)
 // counts 합계 = rows*cols - obstacleCount 이어야 함
 //
-// S1: 8×10=80,  장애물 0개 → 카드 80장  캐릭(16×4+2×6)+시간×2+셔플×2    아이템 각 1쌍
-// S2: 8×12=96,  장애물 4개 → 카드 92장  캐릭(10×4+8×6)+시간×2+셔플×2    아이템 각 1쌍
-// S3: 8×14=112, 장애물 6개 → 카드106장  캐릭(5×4+13×6)+시간×4+셔플×4    아이템 각 2쌍
-// S4: 8×16=128, 장애물 8개 → 카드120장  캐릭(16×6+2×8)+시간×4+셔플×4    아이템 각 2쌍
-// S5: 8×18=144, 장애물10개 → 카드134장  캐릭(11×6+7×8)+시간×6+셔플×6    아이템 각 3쌍
+// S1: 8×10=80,  장애물 0개 → 카드 80장  캐릭(10×4+6×6)+시간×2+셔플×2    아이템 각 1쌍
+// S2: 8×12=96,  장애물 4개 → 카드 92장  캐릭(4×4+12×6)+시간×2+셔플×2    아이템 각 1쌍
+// S3: 8×14=112, 장애물 6개 → 카드106장  캐릭(15×6+1×8)+시간×4+셔플×4    아이템 각 2쌍
+// S4: 8×16=128, 장애물 8개 → 카드120장  캐릭(8×6+8×8)+시간×4+셔플×4     아이템 각 2쌍
+// S5: 8×18=144, 장애물10개 → 카드134장  캐릭(3×6+13×8)+시간×6+셔플×6    아이템 각 3쌍
 function getBoardConfig(stage: number) {
   const s = Math.min(stage, 5);
   const configs = [
-    { rows: 8, cols: 10, obstacleCount:  0, counts: [...Array<number>(16).fill(4), ...Array<number>(2).fill(6),  2, 2] },
-    { rows: 8, cols: 12, obstacleCount:  4, counts: [...Array<number>(10).fill(4), ...Array<number>(8).fill(6),  2, 2] },
-    { rows: 8, cols: 14, obstacleCount:  6, counts: [...Array<number>(5).fill(4),  ...Array<number>(13).fill(6), 4, 4] },
-    { rows: 8, cols: 16, obstacleCount:  8, counts: [...Array<number>(16).fill(6), ...Array<number>(2).fill(8),  4, 4] },
-    { rows: 8, cols: 18, obstacleCount: 10, counts: [...Array<number>(11).fill(6), ...Array<number>(7).fill(8),  6, 6] },
+    { rows: 8, cols: 10, obstacleCount:  0, counts: [...Array<number>(10).fill(4), ...Array<number>(6).fill(6),  2, 2] },
+    { rows: 8, cols: 12, obstacleCount:  4, counts: [...Array<number>(4).fill(4),  ...Array<number>(12).fill(6), 2, 2] },
+    { rows: 8, cols: 14, obstacleCount:  6, counts: [...Array<number>(15).fill(6), 8,                            4, 4] },
+    { rows: 8, cols: 16, obstacleCount:  8, counts: [...Array<number>(8).fill(6),  ...Array<number>(8).fill(8),  4, 4] },
+    { rows: 8, cols: 18, obstacleCount: 10, counts: [...Array<number>(3).fill(6),  ...Array<number>(13).fill(8), 6, 6] },
   ];
   return configs[s - 1];
 }
