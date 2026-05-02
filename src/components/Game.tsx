@@ -7,7 +7,7 @@ import {
   TIME_LIMIT, TIME_CLEAR_BONUS, SCORE_PER_MATCH,
   TIME_ADD_SECONDS, BOARD_CLEAR_BONUS, TIME_BONUS_MULTIPLIER, ITEM_TIME_ID, ITEM_SHUFFLE_ID, OBSTACLE_ID
 } from '../game/constants';
-import { playCardSelect, playMatchSuccess, playMatchFail, setMuted, getMuted } from '../game/sounds';
+import { playCardSelect, playMatchSuccess, playMatchFail, playBGM, pauseBGM, stopBGM, setMuted, getMuted } from '../game/sounds';
 import Board from './Board';
 import StartScreen from './StartScreen';
 import RankingModal from './Ranking/RankingModal';
@@ -114,6 +114,13 @@ export default function Game() {
     else stopTimer();
     return stopTimer;
   }, [phase, isPaused, startTimer, stopTimer]);
+
+  // BGM: phase + isPaused 에 따라 재생/일시정지/정지
+  useEffect(() => {
+    if (phase === 'playing' && !isPaused) playBGM();
+    else if (phase === 'playing' && isPaused) pauseBGM();
+    else stopBGM();
+  }, [phase, isPaused]);
 
   // 가능한 쌍 계산 + 0이면 자동 셔플
   useEffect(() => {

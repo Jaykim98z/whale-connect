@@ -5,8 +5,40 @@ try { _muted = localStorage.getItem('wc-muted') === 'true'; } catch { /* SSR/보
 export function setMuted(val: boolean) {
   _muted = val;
   try { localStorage.setItem('wc-muted', String(val)); } catch {}
+  if (val) pauseBGM();
+  else      playBGM();
 }
 export function getMuted(): boolean { return _muted; }
+
+// ── BGM ──
+let _bgm: HTMLAudioElement | null = null;
+
+function getBGM(): HTMLAudioElement {
+  if (!_bgm) {
+    _bgm = new Audio('/sounds/bgm.mp3');
+    _bgm.loop   = true;
+    _bgm.volume = 0.35;
+  }
+  return _bgm;
+}
+
+/** 인게임 BGM 재생 (음소거 중이면 무시) */
+export function playBGM() {
+  if (_muted) return;
+  try { getBGM().play().catch(() => {}); } catch {}
+}
+
+/** BGM 일시정지 (위치 유지) */
+export function pauseBGM() {
+  try { _bgm?.pause(); } catch {}
+}
+
+/** BGM 정지 + 처음으로 되감기 */
+export function stopBGM() {
+  try {
+    if (_bgm) { _bgm.pause(); _bgm.currentTime = 0; }
+  } catch {}
+}
 
 // ── AudioContext ──
 let ctx: AudioContext | null = null;
