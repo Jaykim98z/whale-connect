@@ -483,18 +483,16 @@
 }
 
 .hud-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
   width: 160px;
+  height: 24px;        /* 썸 높이와 맞춰서 브라우저가 자동 중앙 정렬 */
+  background: transparent;
   cursor: pointer;
-  accent-color: #4ec5e0;
   display: block;
 }
 
-/* 슬라이더 컨테이너 세로 중앙 정렬 */
-.hud-volume-slider::-webkit-slider-container {
-  align-items: center;
-}
-
-/* 슬라이더 트랙 테두리 제거 */
+/* 슬라이더 트랙 */
 .hud-volume-slider::-webkit-slider-runnable-track {
   height: 6px;
   border: none;
@@ -508,10 +506,9 @@
   background: #d0e8f5;
 }
 
-/* 썸(움직이는 버튼) */
+/* 썸(동그라미 버튼) — margin-top 없이 input height로 자동 중앙 정렬 */
 .hud-volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  margin-top: -9px;
   width: 24px;
   height: 24px;
   border-radius: 50%;
