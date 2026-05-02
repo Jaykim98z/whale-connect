@@ -489,6 +489,11 @@
   display: block;
 }
 
+/* 슬라이더 컨테이너 세로 중앙 정렬 */
+.hud-volume-slider::-webkit-slider-container {
+  align-items: center;
+}
+
 /* 슬라이더 트랙 테두리 제거 */
 .hud-volume-slider::-webkit-slider-runnable-track {
   height: 4px;
@@ -501,6 +506,28 @@
   border: none;
   border-radius: 2px;
   background: #d0e8f5;
+}
+
+/* 썸(움직이는 버튼) 세로 중앙 정렬 */
+.hud-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4ec5e0;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+.hud-volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4ec5e0;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  cursor: pointer;
 }
 
 /* ── Item message ── */
