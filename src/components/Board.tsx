@@ -70,9 +70,9 @@ export default function Board({ board, selected, pathCells, matchedCells, curren
           overflow="visible"
         >
           <defs>
-            <filter id="wc-glow" x="-40%" y="-40%" width="180%" height="180%">
-              <feDropShadow dx="0" dy="0" stdDeviation="5"
-                floodColor="#ffd166" floodOpacity="0.85" />
+            <filter id="wc-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="6"
+                floodColor="#ff8c00" floodOpacity="1" />
             </filter>
             <marker
               id="wc-arrow"
@@ -82,23 +82,25 @@ export default function Board({ board, selected, pathCells, matchedCells, curren
               markerWidth="6" markerHeight="6"
               orient="auto"
             >
-              <path d="M 0 0.5 L 9.5 5 L 0 9.5 Z" fill="#ffd166" />
+              <path d="M 0 0.5 L 9.5 5 L 0 9.5 Z" fill="#ffffff" />
             </marker>
           </defs>
 
+          {/* 외곽 글로우 레이어 */}
           <polyline
             points={polyPoints}
             fill="none"
-            stroke="rgba(255,209,102,0.25)"
-            strokeWidth="10"
+            stroke="rgba(255,140,0,0.5)"
+            strokeWidth="14"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+          {/* 메인 흰색 선 */}
           <polyline
             points={polyPoints}
             fill="none"
-            stroke="#ffd166"
-            strokeWidth="4"
+            stroke="#ffffff"
+            strokeWidth="5"
             strokeLinecap="round"
             strokeLinejoin="round"
             markerEnd="url(#wc-arrow)"
@@ -107,15 +109,15 @@ export default function Board({ board, selected, pathCells, matchedCells, curren
           {startPt && (
             <circle
               cx={cx(startPt[1])} cy={cy(startPt[0])}
-              r="7" fill="#ffd166"
-              stroke="rgba(255,255,255,0.85)" strokeWidth="2.5"
+              r="7" fill="#ffffff"
+              stroke="rgba(255,140,0,0.9)" strokeWidth="2.5"
               filter="url(#wc-glow)"
             />
           )}
           {endPt && endPt !== startPt && (
             <circle
               cx={cx(endPt[1])} cy={cy(endPt[0])}
-              r="4" fill="rgba(255,209,102,0.5)" stroke="none"
+              r="4" fill="rgba(255,255,255,0.7)" stroke="none"
             />
           )}
         </svg>

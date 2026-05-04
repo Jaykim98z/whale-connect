@@ -36,7 +36,8 @@
 /* ── 빈 셀 슬롯 (카드 제거 후 자리 표시) ── */
 .board-cell {
   border-radius: 7px;
-  overflow: hidden;
+  /* overflow: hidden 제거 → 선택된 카드 scale/translate 시 잘림 방지 */
+  overflow: visible;
   position: relative;
 }
 

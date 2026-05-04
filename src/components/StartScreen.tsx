@@ -33,10 +33,12 @@ export default function StartScreen({ onStart }: Props) {
               <p className="ss-help-ttl">게임 방법</p>
               <p className="ss-help-row">같은 카드를 2번 이하의 꺾임으로 연결하세요</p>
               <p className="ss-help-row">연결 경로는 빈 칸을 통해야 합니다</p>
+              <p className="ss-help-row">매칭 성공 시 <strong>+10점</strong>, 실패 시 <strong>-5점</strong></p>
               <p className="ss-help-row"><Clock size={11} className="ss-help-row-icon" /> 시간추가 카드 매칭 시 +5초</p>
               <p className="ss-help-row"><Shuffle size={11} className="ss-help-row-icon" /> 셔플 카드 매칭 시 셔플 1회 충전</p>
               <p className="ss-help-row"><Shield size={11} className="ss-help-row-icon" /> 빗금 카드는 제거 불가 — 경로를 막습니다</p>
-              <p className="ss-help-row">판을 클리어하면 +60초 &amp; 다음 스테이지로!</p>
+              <p className="ss-help-row">판 클리어 시 3·2·1 카운트 후 다음 스테이지</p>
+              <p className="ss-help-row">판을 클리어하면 +60초 &amp; +100점 보너스!</p>
               <p className="ss-help-row">시간이 다 되면 게임 종료 — 최고 점수에 도전!</p>
             </div>
           </div>

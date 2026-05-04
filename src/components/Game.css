@@ -486,7 +486,7 @@
   -webkit-appearance: none;
   appearance: none;
   width: 160px;
-  height: 24px;        /* 썸 높이와 맞춰서 브라우저가 자동 중앙 정렬 */
+  height: 24px;          /* 썸 높이와 동일하게 → 트랙이 정중앙에 위치 */
   background: transparent;
   cursor: pointer;
   display: block;
@@ -506,9 +506,12 @@
   background: #d0e8f5;
 }
 
-/* 썸(동그라미 버튼) — margin-top 없이 input height로 자동 중앙 정렬 */
+/* 썸(동그라미 버튼)
+   input height=24px → 트랙 상단 = (24-6)/2 = 9px
+   margin-top = -9px → 썸 상단 = 0px → 썸 중앙 = 12px = input 중앙 ✓ */
 .hud-volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
+  margin-top: -9px;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -525,6 +528,35 @@
   border: 3px solid #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   cursor: pointer;
+}
+
+/* ── 스테이지 전환 카운트다운 ── */
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.countdown-number {
+  font-size: clamp(100px, 20vw, 180px);
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow:
+    0 0 40px rgba(78,197,224,0.9),
+    0 0 80px rgba(78,197,224,0.5),
+    0 4px 12px rgba(0,0,0,0.5);
+  animation: countdownPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  user-select: none;
+}
+
+@keyframes countdownPop {
+  0%   { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
 }
 
 /* ── Item message ── */

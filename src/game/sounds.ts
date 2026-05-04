@@ -10,6 +10,13 @@ export function setMuted(val: boolean) {
 }
 export function getMuted(): boolean { return _muted; }
 
+// ── BGM 볼륨 (localStorage 영속, 기본 0.5) ──
+let _bgmVolume = 0.5;
+try {
+  const saved = localStorage.getItem('wc-volume');
+  if (saved !== null) _bgmVolume = Math.max(0, Math.min(1, Number(saved)));
+} catch {}
+
 // ── BGM ──
 let _bgm: HTMLAudioElement | null = null;
 
@@ -17,7 +24,7 @@ function getBGM(): HTMLAudioElement {
   if (!_bgm) {
     _bgm = new Audio('/sounds/bgm.mp3');
     _bgm.loop   = true;
-    _bgm.volume = 0.5;
+    _bgm.volume = _bgmVolume;
   }
   return _bgm;
 }
@@ -40,15 +47,17 @@ export function stopBGM() {
   } catch {}
 }
 
-/** BGM 볼륨 설정 (0~1) */
+/** BGM 볼륨 설정 (0~1) — localStorage에 영속 저장 */
 export function setBGMVolume(vol: number) {
   const clamped = Math.max(0, Math.min(1, vol));
+  _bgmVolume = clamped;
   try { getBGM().volume = clamped; } catch {}
+  try { localStorage.setItem('wc-volume', String(clamped)); } catch {}
 }
 
 /** 현재 BGM 볼륨 반환 */
 export function getBGMVolume(): number {
-  try { return getBGM().volume; } catch { return 0.35; }
+  return _bgmVolume;
 }
 
 // ── AudioContext ──
@@ -113,6 +122,26 @@ export function playMatchFail() {
     osc.start(now);
     osc.stop(now + 0.18);
   } catch { /* ignore */ }
+}
+
+/** 게임 오버음: gameover.mp3 재생 */
+let _gameover: HTMLAudioElement | null = null;
+
+function getGameover(): HTMLAudioElement {
+  if (!_gameover) {
+    _gameover = new Audio('/sounds/gameover.mp3');
+    _gameover.volume = 0.8;
+  }
+  return _gameover;
+}
+
+export function playGameOver() {
+  if (_muted) return;
+  try {
+    const sfx = getGameover();
+    sfx.currentTime = 0;
+    sfx.play().catch(() => {});
+  } catch {}
 }
 
 /** 카드 선택음: 짧고 경쾌한 틱 */

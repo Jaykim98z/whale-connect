@@ -7,7 +7,7 @@ import {
   TIME_LIMIT, TIME_CLEAR_BONUS, SCORE_PER_MATCH,
   TIME_ADD_SECONDS, BOARD_CLEAR_BONUS, TIME_BONUS_MULTIPLIER, ITEM_TIME_ID, ITEM_SHUFFLE_ID, OBSTACLE_ID
 } from '../game/constants';
-import { playCardSelect, playMatchSuccess, playMatchFail, playBGM, pauseBGM, stopBGM, setMuted, getMuted, setBGMVolume, getBGMVolume } from '../game/sounds';
+import { playCardSelect, playMatchSuccess, playMatchFail, playBGM, pauseBGM, stopBGM, playGameOver, setMuted, getMuted, setBGMVolume, getBGMVolume } from '../game/sounds';
 import Board from './Board';
 import StartScreen from './StartScreen';
 import RankingModal from './Ranking/RankingModal';
@@ -27,17 +27,23 @@ const SHUFFLE_CHARGE_THRESHOLD = 1; // 셔플 아이템 1쌍 제거 시 셔플 1
 //
 // S1: 8×10=80,  장애물 0개 → 카드 80장  캐릭(10×4+6×6)+시간×2+셔플×2    아이템 각 1쌍
 // S2: 8×12=96,  장애물 4개 → 카드 92장  캐릭(4×4+12×6)+시간×2+셔플×2    아이템 각 1쌍
-// S3: 8×14=112, 장애물 6개 → 카드106장  캐릭(15×6+1×8)+시간×4+셔플×4    아이템 각 2쌍
-// S4: 8×16=128, 장애물 8개 → 카드120장  캐릭(8×6+8×8)+시간×4+셔플×4     아이템 각 2쌍
-// S5: 8×18=144, 장애물10개 → 카드134장  캐릭(3×6+13×8)+시간×6+셔플×6    아이템 각 3쌍
+// counts 인덱스: id0..id15=캐릭터16종, id16=올챙구, id17=시간추가, id18=셔플
+// 새우(id8): S1·S2 미등장 → 올챙구로 대체 (합계 동일, 18종 유지)
+// S1: 8×10=80,  장애물 0개 → 카드 80장  18종 (새우✗ 올챙구✓)
+// S2: 8×12=96,  장애물 4개 → 카드 92장  18종 (새우✗ 올챙구✓)
+// S3: 8×14=112, 장애물 6개 → 카드106장  19종 (전부)
+// S4: 8×16=128, 장애물 8개 → 카드120장  19종 (전부)
+// S5: 8×18=144, 장애물10개 → 카드134장  19종 (전부)
 function getBoardConfig(stage: number) {
   const s = Math.min(stage, 5);
   const configs = [
-    { rows: 8, cols: 10, obstacleCount:  0, counts: [...Array<number>(10).fill(4), ...Array<number>(6).fill(6),  2, 2] },
-    { rows: 8, cols: 12, obstacleCount:  4, counts: [...Array<number>(4).fill(4),  ...Array<number>(12).fill(6), 2, 2] },
-    { rows: 8, cols: 14, obstacleCount:  6, counts: [...Array<number>(15).fill(6), 8,                            4, 4] },
-    { rows: 8, cols: 16, obstacleCount:  8, counts: [...Array<number>(8).fill(6),  ...Array<number>(8).fill(8),  4, 4] },
-    { rows: 8, cols: 18, obstacleCount: 10, counts: [...Array<number>(3).fill(6),  ...Array<number>(13).fill(8), 6, 6] },
+    // S1: id8(새우)=0, id16(올챙구)=4 → 새우 자리를 올챙구로 대체
+    { rows: 8, cols: 10, obstacleCount:  0, counts: [...Array<number>(8).fill(4), 0, ...Array<number>(1).fill(4), ...Array<number>(6).fill(6), 4, 2, 2] },
+    // S2: id8(새우)=0, id16(올챙구)=6 → 새우 자리를 올챙구로 대체
+    { rows: 8, cols: 12, obstacleCount:  4, counts: [...Array<number>(4).fill(4), ...Array<number>(4).fill(6), 0, ...Array<number>(7).fill(6), 6, 2, 2] },
+    { rows: 8, cols: 14, obstacleCount:  6, counts: [...Array<number>(15).fill(6), 4,                            4, 4, 4] },
+    { rows: 8, cols: 16, obstacleCount:  8, counts: [...Array<number>(11).fill(6), ...Array<number>(5).fill(8),  6, 4, 4] },
+    { rows: 8, cols: 18, obstacleCount: 10, counts: [...Array<number>(3).fill(4),  ...Array<number>(13).fill(8), 6, 6, 6] },
   ];
   return configs[s - 1];
 }
@@ -73,10 +79,12 @@ export default function Game() {
   const [bgmVolume, setBgmVolume] = useState(() => getBGMVolume());
   const [showHomeConfirm, setShowHomeConfirm] = useState(false);
   const [clearStats, setClearStats] = useState({ matchScore: 0, clearBonus: 0, timeBonus: 0 });
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingRef      = useRef<Set<string>>(new Set());
   const scoreRef        = useRef(0);
+  const nextBoardRef    = useRef<ReturnType<typeof generateBoardWithObstacles> | null>(null);
   const timeRef         = useRef(TIME_LIMIT);
   const itemMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -109,12 +117,12 @@ export default function Game() {
     itemMsgTimerRef.current = setTimeout(() => setItemMsg(null), 1800);
   }, []);
 
-  // 타이머: phase + isPaused 에 따라 제어
+  // 타이머: phase + isPaused + countdown 에 따라 제어
   useEffect(() => {
-    if (phase === 'playing' && !isPaused) startTimer();
+    if (phase === 'playing' && !isPaused && countdown === null) startTimer();
     else stopTimer();
     return stopTimer;
-  }, [phase, isPaused, startTimer, stopTimer]);
+  }, [phase, isPaused, countdown, startTimer, stopTimer]);
 
   // BGM: phase + isPaused 에 따라 재생/일시정지/정지
   useEffect(() => {
@@ -122,6 +130,26 @@ export default function Game() {
     else if (phase === 'playing' && isPaused) pauseBGM();
     else stopBGM();
   }, [phase, isPaused]);
+
+  // 게임 오버 사운드
+  useEffect(() => {
+    if (phase === 'gameover') playGameOver();
+  }, [phase]);
+
+  // 스테이지 전환 카운트다운 (3→2→1→0: 보드 교체 후 재개)
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown === 0) {
+      if (nextBoardRef.current) {
+        setBoard(nextBoardRef.current);
+        nextBoardRef.current = null;
+      }
+      setCountdown(null);
+      return;
+    }
+    const t = setTimeout(() => setCountdown(c => (c !== null && c > 0) ? c - 1 : null), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   // 가능한 쌍 계산 + 0이면 자동 셔플
   useEffect(() => {
@@ -235,6 +263,8 @@ export default function Game() {
 
     if (board[sr][sc] !== board[r][c]) {
       playMatchFail();
+      scoreRef.current = Math.max(0, scoreRef.current - 5);
+      setScore(scoreRef.current);
       setSelected([r, c]);
       return;
     }
@@ -242,6 +272,8 @@ export default function Game() {
     const path = findPath(board, sr, sc, r, c);
     if (path === null) {
       playMatchFail();
+      scoreRef.current = Math.max(0, scoreRef.current - 5);
+      setScore(scoreRef.current);
       setSelected([r, c]);
       return;
     }
@@ -329,7 +361,10 @@ export default function Game() {
             // stage state는 비동기이므로 직접 계산
             const nextStage = stage + 1;
             const { rows, cols, counts, obstacleCount } = getBoardConfig(nextStage);
-            nextBoard = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
+            // 다음 보드를 ref에 저장하고 카운트다운 시작 (보드 교체는 카운트 후)
+            nextBoardRef.current = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
+            setCountdown(3);
+            // nextBoard = null → 현재 빈 보드 유지하며 카운트다운
           }
         }
 
@@ -357,6 +392,15 @@ export default function Game() {
 
   return (
     <div className="game-wrap">
+
+      {/* 스테이지 전환 카운트다운 오버레이 */}
+      {countdown !== null && (
+        <div className="countdown-overlay">
+          <div className="countdown-number" key={countdown}>
+            {countdown === 0 ? 'GO!' : countdown}
+          </div>
+        </div>
+      )}
 
       {/* 전 스테이지 클리어 엔딩 */}
       {phase === 'cleared' && (
