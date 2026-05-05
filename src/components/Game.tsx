@@ -170,6 +170,45 @@ export default function Game() {
     }
   }, [board, phase, showItemMsg]);
 
+  // ── 판 클리어 감지 ──
+  // handleCellClick 클로저 안에서 willClear를 계산하면, 마지막 두 쌍을
+  // 빠르게 연속 매칭할 때 두 클로저가 같은 stale board를 캡처해
+  // "아직 카드 남음"으로 오판하는 버그가 발생한다.
+  // 이 useEffect는 실제 board 상태 커밋 후 반응하므로 항상 정확하다.
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    if (countdown !== null) return;       // 이미 카운트다운 중
+    if (!isBoardClear(board)) return;     // 아직 카드 있음
+
+    // 판 클리어 확정
+    scoreRef.current += BOARD_CLEAR_BONUS;
+    setScore(scoreRef.current);
+
+    if (stage >= 5) {
+      // 🎉 전 스테이지 클리어!
+      const timeBonus  = timeRef.current * TIME_BONUS_MULTIPLIER;
+      const totalClear = 5 * BOARD_CLEAR_BONUS;
+      const matchScore = scoreRef.current - totalClear;
+      scoreRef.current += timeBonus;
+      setScore(scoreRef.current);
+      setFinalScore(scoreRef.current);
+      setClearStats({ matchScore, clearBonus: totalClear, timeBonus });
+      setTimeout(() => {
+        stopTimer();
+        setPhase('cleared');
+      }, 420);
+    } else {
+      timeRef.current += TIME_CLEAR_BONUS;
+      setTimeLeft(t => t + TIME_CLEAR_BONUS);
+      showItemMsg(`판 클리어! +${BOARD_CLEAR_BONUS}`);
+      setStage(prev => prev + 1);
+      const nextStage = stage + 1;
+      const { rows, cols, counts, obstacleCount } = getBoardConfig(nextStage);
+      nextBoardRef.current = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
+      setCountdown(3);
+    }
+  }, [board, phase, stage, countdown, stopTimer, showItemMsg]);
+
   const startGame = () => {
     const { rows, cols, counts, obstacleCount } = getBoardConfig(1);
     const b = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
@@ -325,59 +364,19 @@ export default function Game() {
         scoreRef.current += SCORE_PER_MATCH;
         setScore(scoreRef.current);
 
-        // 판 클리어 여부 사전 계산 (setBoard updater 밖에서 처리)
-        const tempBoard = board.map(row => [...row]);
-        tempBoard[sr][sc] = null;
-        tempBoard[r][c] = null;
-        const willClear = isBoardClear(tempBoard);
-
-        // 클리어 시 새 보드를 updater 밖에서 미리 생성
-        // → updater 이중 호출(StrictMode) 시 두 번 생성되는 것을 방지
-        let nextBoard: ReturnType<typeof generateBoardWithObstacles> | null = null;
-        if (willClear) {
-          scoreRef.current += BOARD_CLEAR_BONUS;
-          setScore(scoreRef.current);
-
-          if (stage >= 5) {
-            // 🎉 전 스테이지 클리어!
-            const timeBonus  = timeRef.current * TIME_BONUS_MULTIPLIER;
-            const totalClear = 5 * BOARD_CLEAR_BONUS;           // 500
-            const matchScore = scoreRef.current - totalClear;   // 순수 매칭 점수
-            scoreRef.current += timeBonus;
-            setScore(scoreRef.current);
-            setFinalScore(scoreRef.current);
-            setClearStats({ matchScore, clearBonus: totalClear, timeBonus });
-            // nextBoard = null → 마지막 카드 2장만 제거 후 빈 보드 노출
-            // 짧은 딜레이 후 엔딩 화면 전환
-            setTimeout(() => {
-              stopTimer();
-              setPhase('cleared');
-            }, 420);
-          } else {
-            timeRef.current = timeRef.current + TIME_CLEAR_BONUS;
-            setTimeLeft(t => t + TIME_CLEAR_BONUS);
-            showItemMsg(`판 클리어! +${BOARD_CLEAR_BONUS}`);
-            setStage(prev => prev + 1);
-            // stage state는 비동기이므로 직접 계산
-            const nextStage = stage + 1;
-            const { rows, cols, counts, obstacleCount } = getBoardConfig(nextStage);
-            // 다음 보드를 ref에 저장하고 카운트다운 시작 (보드 교체는 카운트 후)
-            nextBoardRef.current = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
-            setCountdown(3);
-            // nextBoard = null → 현재 빈 보드 유지하며 카운트다운
-          }
-        }
-
         // ── pending 해제: 업데이터 밖에서 처리 (순수 함수 원칙) ──
         pendingRef.current.delete(keyA);
         pendingRef.current.delete(keyB);
 
-        // ── 보드 업데이트 (순수 함수만 — 외부 ref 뮤테이션 없음) ──
+        // ── 보드 업데이트 (순수 함수만) ──
+        // 판 클리어 판정은 이 아래 useEffect에서 실제 board 상태로 처리.
+        // 여기서 closured board 로 willClear를 계산하면, 두 쌍이 빠르게
+        // 연속 매칭될 때 두 클로저 모두 stale board를 캡처해서 판정 실패함.
         setBoard(prev => {
           const next = prev.map(row => [...row]);
           next[sr][sc] = null;
           next[r][c] = null;
-          return nextBoard ?? next;
+          return next;
         });
       }, MATCH_ANIM_MS);
     }, PATH_SHOW_MS);
