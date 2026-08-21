@@ -100,6 +100,30 @@
   font-weight: 900;
   color: #ff8c00;
   letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b35, #ff2d55);
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(255,45,85,0.4);
+  animation: comboPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+}
+
+@keyframes comboPop {
+  0%   { transform: scale(1.5); opacity: 0.4; }
+  100% { transform: scale(1);   opacity: 1; }
 }
 
 .hud-pairs {
@@ -880,4 +904,67 @@
   color: #7ab8d4;
   font-size: 13px;
   font-weight: 700;
+}
+
+/* ── 보드 크기 조절 패널 ── */
+.bsp-panel {
+  position: fixed;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 25;
+  background: rgba(255,255,255,0.82);
+  border: 1.5px solid rgba(78,197,224,0.3);
+  border-radius: 20px;
+  padding: 10px 8px;
+  box-shadow: 0 4px 16px rgba(78,197,224,0.18);
+  backdrop-filter: blur(8px);
+  user-select: none;
+}
+
+.bsp-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(78,197,224,0.35);
+  background: rgba(78,197,224,0.1);
+  color: #2b9ed4;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+  padding: 0;
+}
+
+.bsp-btn:hover:not(:disabled) {
+  background: rgba(78,197,224,0.25);
+  transform: scale(1.12);
+}
+
+.bsp-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.bsp-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.bsp-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #2b9ed4;
+  letter-spacing: 0.3px;
+}
+
+/* 모바일: 패널 숨기고 HUD 우측에 인라인 버튼으로 대체 */
+@media (max-width: 600px) {
+  .bsp-panel { display: none; }
 }

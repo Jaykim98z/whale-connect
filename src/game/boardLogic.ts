@@ -27,6 +27,38 @@ export function shuffleBoard(board: Board): Board {
   return newBoard;
 }
 
+/**
+ * 카드 + 장애물을 모두 재배치하는 셔플.
+ * 일반 shuffleBoard는 장애물 위치를 고정하므로, 마지막 한 쌍이
+ * 장애물에 갇혀 연결 불가일 때 무한 교착이 발생한다.
+ * 이 함수는 점유된 칸(카드+장애물) 전체를 섞어 장애물 위치까지 바꾼다.
+ * 가능하면 연결쌍이 1개 이상 나올 때까지 재시도한다.
+ */
+export function shuffleBoardWithObstacles(board: Board, maxAttempts = 30): Board {
+  const rows = board.length;
+  const cols = board[0]?.length ?? 0;
+
+  // 점유된 칸(카드 + 장애물)의 위치와 값을 수집
+  const occupied: { r: number; c: number }[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c] !== null) occupied.push({ r, c });
+    }
+  }
+  const values = occupied.map(pos => board[pos.r][pos.c] as number);
+
+  let best: Board = board;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    shuffle(values);
+    const newBoard: Board = board.map(row => [...row]);
+    occupied.forEach((pos, i) => { newBoard[pos.r][pos.c] = values[i]; });
+    best = newBoard;
+    if (countPossiblePairs(newBoard) > 0) return newBoard;
+  }
+  // 모든 시도가 실패해도 마지막 결과 반환 (이론상 도달 거의 불가)
+  return best;
+}
+
 export function countPossiblePairs(board: Board): number {
   const rows = board.length;
   const cols = board[0]?.length ?? 0;

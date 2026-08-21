@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, X, User, Award, Anchor } from 'lucide-react';
+import { Trophy, X, User, Award, Anchor, Crown, Info } from 'lucide-react';
 import { getTopRankings, getWCRankings } from '../../services/firebase';
 import type { RankingEntry } from '../../services/firebase';
 import './RankingModal.css';
@@ -16,6 +16,7 @@ export default function RankingModal({ onClose, highlightSoopId }: Props) {
   const [allRankings, setAllRankings] = useState<RankingEntry[]>([]);
   const [wcRankings, setWcRankings] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -39,7 +40,31 @@ export default function RankingModal({ onClose, highlightSoopId }: Props) {
     <div className="rm-overlay" onClick={onClose}>
       <div className="rm-modal rm-ranking-modal" onClick={e => e.stopPropagation()}>
         <div className="rm-header">
-          <span className="rm-title"><Trophy size={16} /> 랭킹</span>
+          <div className="rm-header-left">
+            <span className="rm-title"><Trophy size={16} /> 랭킹</span>
+            <div className="rm-info-wrap">
+              <button
+                className="rm-info-btn"
+                type="button"
+                onClick={() => setShowInfo(v => !v)}
+                aria-label="랭킹 안내"
+              >
+                <Info size={15} />
+              </button>
+              <div className={`rm-info-tooltip ${showInfo ? 'rm-info-tooltip-open' : ''}`}>
+                <p className="rm-info-ttl">랭킹 안내</p>
+                <p className="rm-info-row">
+                  <Crown size={13} className="rm-info-icon" /> 7스테이지 클리어 시 닉네임에 왕관 표시
+                </p>
+                <p className="rm-info-row">SOOP 아이디로 등록한 기록만 반영됩니다</p>
+                <p className="rm-info-row">아이디당 최고 점수 1개만 기록됩니다</p>
+                <p className="rm-info-row">
+                  <Anchor size={13} className="rm-info-icon" /> 고래상사 멤버는 '고래상사' 탭에 집계
+                </p>
+                <p className="rm-info-row">전체 랭킹은 TOP 100까지 표시됩니다</p>
+              </div>
+            </div>
+          </div>
           <button className="rm-close-btn" onClick={onClose}><X size={16} /></button>
         </div>
 
@@ -70,6 +95,9 @@ export default function RankingModal({ onClose, highlightSoopId }: Props) {
                   </div>
                   <div className="rm-row-name">
                     <span className="rm-row-nick">{entry.playerName}</span>
+                    {entry.cleared && (
+                      <Crown size={14} className="rm-crown" aria-label="전 스테이지 클리어" />
+                    )}
                   </div>
                   {entry.isWC && <div className="rm-wc-badge"><Anchor size={13} /></div>}
                   <div className="rm-row-score">{entry.score.toLocaleString()}</div>

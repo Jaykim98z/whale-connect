@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Link2, Clock, Trophy, Shuffle, Shield } from 'lucide-react';
+import { Play, Link2, Clock, Trophy, Shuffle, Shield, Flame } from 'lucide-react';
 import { CARD_DEFS } from '../game/constants';
 import RankingModal from './Ranking/RankingModal';
 import Footer from './Footer/Footer';
@@ -19,7 +19,7 @@ export default function StartScreen({ onStart }: Props) {
         <div className="ss-card">
           {/* 상단 바 */}
           <div className="ss-top-bar" />
-          <p className="ss-patch-date">Whale Connect v1.0</p>
+          <p className="ss-patch-date">Whale Connect v2.0</p>
 
           {/* 도움말 버튼 */}
           <div className="ss-help-wrap">
@@ -33,7 +33,8 @@ export default function StartScreen({ onStart }: Props) {
               <p className="ss-help-ttl">게임 방법</p>
               <p className="ss-help-row">같은 카드를 2번 이하의 꺾임으로 연결하세요</p>
               <p className="ss-help-row">연결 경로는 빈 칸을 통해야 합니다</p>
-              <p className="ss-help-row">매칭 성공 시 <strong>+10점</strong>, 실패 시 <strong>-5점</strong></p>
+              <p className="ss-help-row">매칭 성공 시 <strong>+10점</strong> (실패해도 감점 없음)</p>
+              <p className="ss-help-row"><Flame size={11} className="ss-help-row-icon" /> 콤보! 3초 안에 연속 매칭 시 콤보당 <strong>+2점</strong> (최대 5콤보)</p>
               <p className="ss-help-row"><Clock size={11} className="ss-help-row-icon" /> 시간추가 카드 매칭 시 +5초</p>
               <p className="ss-help-row"><Shuffle size={11} className="ss-help-row-icon" /> 셔플 카드 매칭 시 셔플 1회 충전</p>
               <p className="ss-help-row"><Shield size={11} className="ss-help-row-icon" /> 빗금 카드는 제거 불가 — 경로를 막습니다</p>
@@ -86,9 +87,9 @@ export default function StartScreen({ onStart }: Props) {
               <div className="ss-feat-desc">2번 꺾임으로 같은 카드 연결</div>
             </div>
             <div className="ss-feature">
-              <div className="ss-feat-icon-wrap"><Clock size={18} /></div>
-              <div className="ss-feat-title">5단계 스테이지</div>
-              <div className="ss-feat-desc">판 클리어마다 보드 확장 +60초</div>
+              <div className="ss-feat-icon-wrap"><Flame size={18} /></div>
+              <div className="ss-feat-title">콤보 시스템</div>
+              <div className="ss-feat-desc">빠르게 연속 매칭해 콤보 점수!</div>
             </div>
             <div className="ss-feature">
               <div className="ss-feat-icon-wrap"><Trophy size={18} /></div>

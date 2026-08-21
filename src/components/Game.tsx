@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Trophy, RefreshCw, Shuffle, Pause, Play, Home, Clock, Volume2, VolumeX } from 'lucide-react';
-import { generateBoardWithObstacles, shuffleBoard, countPossiblePairs, isBoardClear } from '../game/boardLogic';
+import { Trophy, RefreshCw, Shuffle, Pause, Play, Home, Clock, Volume2, VolumeX, Flame, Star } from 'lucide-react';
+import { generateBoardWithObstacles, shuffleBoard, shuffleBoardWithObstacles, countPossiblePairs, isBoardClear } from '../game/boardLogic';
 import type { Board as BoardState } from '../game/boardLogic';
 import { findPath } from '../game/connectLogic';
 import {
-  TIME_LIMIT, TIME_CLEAR_BONUS, SCORE_PER_MATCH,
-  TIME_ADD_SECONDS, BOARD_CLEAR_BONUS, TIME_BONUS_MULTIPLIER, ITEM_TIME_ID, ITEM_SHUFFLE_ID, OBSTACLE_ID
+  TIME_LIMIT, SCORE_PER_MATCH,
+  TIME_ADD_SECONDS, BOARD_CLEAR_BONUS, TIME_BONUS_MULTIPLIER, ITEM_TIME_ID, ITEM_SHUFFLE_ID, OBSTACLE_ID,
+  CARD_DEFS, COMBO_WINDOW_MS, COMBO_POINT, COMBO_MAX, stageTimeBonus,
 } from '../game/constants';
 import { playCardSelect, playMatchSuccess, playMatchFail, playBGM, pauseBGM, stopBGM, playGameOver, setMuted, getMuted, setBGMVolume, getBGMVolume } from '../game/sounds';
 import Board from './Board';
 import StartScreen from './StartScreen';
+import BoardSizePanel from './BoardSizePanel';
 import RankingModal from './Ranking/RankingModal';
 import RankingRegisterModal from './Ranking/RankingRegisterModal';
 import './Game.css';
@@ -21,31 +23,59 @@ const MATCH_ANIM_MS = 220;
 const AUTO_SHUFFLE_DELAY_MS = 1200;
 const SHUFFLE_CHARGE_THRESHOLD = 1; // 셔플 아이템 1쌍 제거 시 셔플 1회 충전
 
-// 스테이지별 보드 설정
-// counts 배열: [id0..id15]=캐릭터(16종), [id16]=시간추가, [id17]=셔플  (짝수만 가능)
-// counts 합계 = rows*cols - obstacleCount 이어야 함
+export const MAX_STAGE = 7;
+
+// ── 스테이지별 보드 설정 (7스테이지) ──
+// 멤버 15명 전원 항상 등장 + 팬캐릭 랜덤 선발 + 아이템 2종
+// 가로:  S1=10 S2=12 S3=12 S4=14 S5=14 S6=16 S7=16 (세로 8 고정)
+// 장애물: 0 / 2 / 4 / 8 / 10 / 14 / 16
+// 팬캐릭: 1 / 1 / 2 / 3 / 4 / 5 / 6
+// 아이템쌍(종류당): 1 / 1 / 1 / 2 / 2 / 3 / 3  (후반 여유 ↑)
 //
-// S1: 8×10=80,  장애물 0개 → 카드 80장  캐릭(10×4+6×6)+시간×2+셔플×2    아이템 각 1쌍
-// S2: 8×12=96,  장애물 4개 → 카드 92장  캐릭(4×4+12×6)+시간×2+셔플×2    아이템 각 1쌍
-// counts 인덱스: id0..id15=캐릭터16종, id16=올챙구, id17=시간추가, id18=셔플
-// 새우(id8): S1·S2 미등장 → 올챙구로 대체 (합계 동일, 18종 유지)
-// S1: 8×10=80,  장애물 0개 → 카드 80장  18종 (새우✗ 올챙구✓)
-// S2: 8×12=96,  장애물 4개 → 카드 92장  18종 (새우✗ 올챙구✓)
-// S3: 8×14=112, 장애물 6개 → 카드106장  19종 (전부)
-// S4: 8×16=128, 장애물 8개 → 카드120장  19종 (전부)
-// S5: 8×18=144, 장애물10개 → 카드134장  19종 (전부)
-function getBoardConfig(stage: number) {
-  const s = Math.min(stage, 5);
-  const configs = [
-    // S1: id8(새우)=0, id16(올챙구)=4 → 새우 자리를 올챙구로 대체
-    { rows: 8, cols: 10, obstacleCount:  0, counts: [...Array<number>(8).fill(4), 0, ...Array<number>(1).fill(4), ...Array<number>(6).fill(6), 4, 2, 2] },
-    // S2: id8(새우)=0, id16(올챙구)=6 → 새우 자리를 올챙구로 대체
-    { rows: 8, cols: 12, obstacleCount:  4, counts: [...Array<number>(4).fill(4), ...Array<number>(4).fill(6), 0, ...Array<number>(7).fill(6), 6, 2, 2] },
-    { rows: 8, cols: 14, obstacleCount:  6, counts: [...Array<number>(15).fill(6), 4,                            4, 4, 4] },
-    { rows: 8, cols: 16, obstacleCount:  8, counts: [...Array<number>(11).fill(6), ...Array<number>(5).fill(8),  6, 4, 4] },
-    { rows: 8, cols: 18, obstacleCount: 10, counts: [...Array<number>(3).fill(4),  ...Array<number>(13).fill(8), 6, 6, 6] },
-  ];
-  return configs[s - 1];
+// ※ 프하 제외로 멤버가 16→15명이 되면서, 빈 자리를 팬캐릭 랜덤 1종으로 대체(전 스테이지 +1).
+//   총 캐릭터 종류 = 멤버15 + 팬캐릭 = 16/16/17/18/19/20/21 → 프하 제외 전과 완전히 동일.
+//   보드는 종류 개수만 따지므로 난이도(점수 획득 곡선)가 기존과 완전히 동일하게 유지됨.
+const STAGE_DATA = [
+  { cols: 10, obstacleCount:  0, fanchars: 1, itemPairs: 1 },
+  { cols: 12, obstacleCount:  2, fanchars: 1, itemPairs: 1 },
+  { cols: 12, obstacleCount:  4, fanchars: 2, itemPairs: 1 },
+  { cols: 14, obstacleCount:  8, fanchars: 3, itemPairs: 2 },
+  { cols: 14, obstacleCount: 10, fanchars: 4, itemPairs: 2 },
+  { cols: 16, obstacleCount: 14, fanchars: 5, itemPairs: 3 },
+  { cols: 16, obstacleCount: 16, fanchars: 6, itemPairs: 3 },
+] as const;
+
+// 스테이지별 팬캐릭 랜덤 선발 (등장 종류 수는 STAGE_DATA.fanchars)
+function pickFanchars(stage: number): number[] {
+  const count = STAGE_DATA[Math.min(stage, MAX_STAGE) - 1].fanchars;
+  const allIds = CARD_DEFS.filter(d => d.isFanchar).map(d => d.id);
+  const arr = [...allIds];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, Math.min(count, allIds.length));
+}
+
+// charCards = totalCells - 아이템카드, base = floor(charCards/charCount) (짝수로 내림)
+// 나머지는 앞 charId부터 +2 페어로 분배 → 멤버 확장 시에도 공식만으로 자동 재분배
+function getBoardConfig(stage: number, fancharIds: number[]) {
+  const { cols, obstacleCount, itemPairs } = STAGE_DATA[Math.min(stage, MAX_STAGE) - 1];
+  const rows = 8;
+  const totalCells   = rows * cols - obstacleCount;
+  const memberIds    = CARD_DEFS.filter(d => !d.isItem && !d.isFanchar).map(d => d.id);
+  const charIds      = [...memberIds, ...fancharIds];
+  const itemCardsEach = itemPairs * 2;
+  const charCards    = totalCells - 2 * itemCardsEach;
+  let base = Math.floor(charCards / charIds.length);
+  if (base % 2 !== 0) base -= 1;
+  const extra      = charCards - base * charIds.length;
+  const extraPairs = extra / 2;
+  const counts     = new Array(CARD_DEFS.length).fill(0);
+  charIds.forEach((id, i) => { counts[id] = base + (i < extraPairs ? 2 : 0); });
+  counts[ITEM_TIME_ID]    = itemCardsEach;
+  counts[ITEM_SHUFFLE_ID] = itemCardsEach;
+  return { rows, cols, obstacleCount, counts };
 }
 
 function formatTime(sec: number): string {
@@ -58,7 +88,8 @@ export default function Game() {
   const [phase, setPhase] = useState<GamePhase>('title');
   const [stage, setStage] = useState(1);
   const [board, setBoard] = useState<BoardState>(() => {
-    const { rows, cols, counts, obstacleCount } = getBoardConfig(1);
+    const fancharIds = pickFanchars(1);
+    const { rows, cols, counts, obstacleCount } = getBoardConfig(1, fancharIds);
     return generateBoardWithObstacles(rows, cols, counts, obstacleCount);
   });
   const [selected, setSelected] = useState<[number, number] | null>(null);
@@ -80,6 +111,10 @@ export default function Game() {
   const [showHomeConfirm, setShowHomeConfirm] = useState(false);
   const [clearStats, setClearStats] = useState({ matchScore: 0, clearBonus: 0, timeBonus: 0 });
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [combo, setCombo] = useState(0);
+  const [boardScale, setBoardScale] = useState<number>(() =>
+    Number(localStorage.getItem('wc-board-scale') ?? 1.0)
+  );
 
   const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingRef      = useRef<Set<string>>(new Set());
@@ -87,11 +122,22 @@ export default function Game() {
   const nextBoardRef    = useRef<ReturnType<typeof generateBoardWithObstacles> | null>(null);
   const timeRef         = useRef(TIME_LIMIT);
   const itemMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const comboRef        = useRef(0);                                   // 현재 콤보
+  const comboTimeRef    = useRef(0);                                   // 직전 매칭 시각(ms)
+  const comboResetRef   = useRef<ReturnType<typeof setTimeout> | null>(null); // 콤보 만료 타이머
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
   }, []);
+
+  const handleScaleChange = (delta: number) => {
+    setBoardScale(prev => {
+      const next = Math.round(Math.max(0.6, Math.min(1.6, prev + delta)) * 10) / 10;
+      localStorage.setItem('wc-board-scale', String(next));
+      return next;
+    });
+  };
 
   const startTimer = useCallback(() => {
     stopTimer();
@@ -159,7 +205,8 @@ export default function Game() {
     if (pairs === 0 && !isBoardClear(board)) {
       const t = setTimeout(() => {
         setBoard(prev => {
-          const shuffled = shuffleBoard(prev);
+          // 장애물까지 함께 재배치 — 마지막 쌍이 장애물에 갇히는 교착 방지
+          const shuffled = shuffleBoardWithObstacles(prev);
           setPossiblePairs(countPossiblePairs(shuffled));
           return shuffled;
         });
@@ -184,10 +231,10 @@ export default function Game() {
     scoreRef.current += BOARD_CLEAR_BONUS;
     setScore(scoreRef.current);
 
-    if (stage >= 5) {
+    if (stage >= MAX_STAGE) {
       // 🎉 전 스테이지 클리어!
       const timeBonus  = timeRef.current * TIME_BONUS_MULTIPLIER;
-      const totalClear = 5 * BOARD_CLEAR_BONUS;
+      const totalClear = MAX_STAGE * BOARD_CLEAR_BONUS;
       const matchScore = scoreRef.current - totalClear;
       scoreRef.current += timeBonus;
       setScore(scoreRef.current);
@@ -198,19 +245,22 @@ export default function Game() {
         setPhase('cleared');
       }, 420);
     } else {
-      timeRef.current += TIME_CLEAR_BONUS;
-      setTimeLeft(t => t + TIME_CLEAR_BONUS);
-      showItemMsg(`판 클리어! +${BOARD_CLEAR_BONUS}`);
-      setStage(prev => prev + 1);
       const nextStage = stage + 1;
-      const { rows, cols, counts, obstacleCount } = getBoardConfig(nextStage);
+      const addTime = stageTimeBonus(nextStage);   // 2R:60 3R:70 ... 6R:100
+      timeRef.current += addTime;
+      setTimeLeft(t => t + addTime);
+      showItemMsg(`판 클리어! +${BOARD_CLEAR_BONUS}점 · +${addTime}초`);
+      setStage(prev => prev + 1);
+      const fancharIds = pickFanchars(nextStage);
+      const { rows, cols, counts, obstacleCount } = getBoardConfig(nextStage, fancharIds);
       nextBoardRef.current = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
       setCountdown(3);
     }
   }, [board, phase, stage, countdown, stopTimer, showItemMsg]);
 
   const startGame = () => {
-    const { rows, cols, counts, obstacleCount } = getBoardConfig(1);
+    const fancharIds = pickFanchars(1);
+    const { rows, cols, counts, obstacleCount } = getBoardConfig(1, fancharIds);
     const b = generateBoardWithObstacles(rows, cols, counts, obstacleCount);
     scoreRef.current = 0;
     timeRef.current = TIME_LIMIT;
@@ -226,6 +276,10 @@ export default function Game() {
     setShuffleCharge(0);
     setIsPaused(false);
     pendingRef.current.clear();
+    comboRef.current = 0;
+    comboTimeRef.current = 0;
+    if (comboResetRef.current) clearTimeout(comboResetRef.current);
+    setCombo(0);
     setPhase('playing');
   };
 
@@ -302,8 +356,6 @@ export default function Game() {
 
     if (board[sr][sc] !== board[r][c]) {
       playMatchFail();
-      scoreRef.current = Math.max(0, scoreRef.current - 5);
-      setScore(scoreRef.current);
       setSelected([r, c]);
       return;
     }
@@ -311,8 +363,6 @@ export default function Game() {
     const path = findPath(board, sr, sc, r, c);
     if (path === null) {
       playMatchFail();
-      scoreRef.current = Math.max(0, scoreRef.current - 5);
-      setScore(scoreRef.current);
       setSelected([r, c]);
       return;
     }
@@ -361,7 +411,26 @@ export default function Game() {
           showItemMsg('셔플 충전!');
         }
 
-        scoreRef.current += SCORE_PER_MATCH;
+        // ── 콤보 계산: 직전 매칭 후 COMBO_WINDOW_MS 이내면 콤보 +1 (최대 COMBO_MAX) ──
+        const now = Date.now();
+        if (now - comboTimeRef.current <= COMBO_WINDOW_MS) {
+          comboRef.current = Math.min(comboRef.current + 1, COMBO_MAX);
+        } else {
+          comboRef.current = 0;
+        }
+        comboTimeRef.current = now;
+        setCombo(comboRef.current);
+
+        // 콤보 만료 타이머 — 3초 동안 매칭 없으면 콤보 리셋
+        if (comboResetRef.current) clearTimeout(comboResetRef.current);
+        comboResetRef.current = setTimeout(() => {
+          comboRef.current = 0;
+          setCombo(0);
+        }, COMBO_WINDOW_MS);
+
+        // 매칭 점수 = 기본 + 콤보 보너스(콤보 1당 COMBO_POINT)
+        const gained = SCORE_PER_MATCH + comboRef.current * COMBO_POINT;
+        scoreRef.current += gained;
         setScore(scoreRef.current);
 
         // ── pending 해제: 업데이터 밖에서 처리 (순수 함수 원칙) ──
@@ -380,7 +449,7 @@ export default function Game() {
         });
       }, MATCH_ANIM_MS);
     }, PATH_SHOW_MS);
-  }, [phase, board, selected, isPaused, stage, stopTimer, showItemMsg]);
+  }, [phase, board, selected, isPaused, showItemMsg]);
 
   const timeRatio = Math.min(timeLeft / TIME_LIMIT, 1);
   const timerColor = timeRatio > 0.4 ? '#4ecdc4' : timeRatio > 0.2 ? '#ffd166' : '#ef4444';
@@ -416,7 +485,9 @@ export default function Game() {
 
             {/* 타이틀 */}
             <h2 className="result-title result-title-clear">CLEAR!</h2>
-            <p className="result-sub">⭐ 5스테이지 전 클리어 달성! ⭐</p>
+            <p className="result-sub">
+              <Star size={12} fill="currentColor" style={{ verticalAlign: '-2px' }} /> {MAX_STAGE}스테이지 전 클리어 달성! <Star size={12} fill="currentColor" style={{ verticalAlign: '-2px' }} />
+            </p>
 
             <div className="result-divider" />
 
@@ -427,7 +498,7 @@ export default function Game() {
                 <span>{clearStats.matchScore.toLocaleString()}점</span>
               </div>
               <div className="result-breakdown-row result-breakdown-bonus">
-                <span>스테이지 클리어 ×5</span>
+                <span>스테이지 클리어 ×{MAX_STAGE}</span>
                 <span>+{clearStats.clearBonus.toLocaleString()}점</span>
               </div>
               <div className="result-breakdown-row result-breakdown-bonus">
@@ -487,6 +558,16 @@ export default function Game() {
         </div>
       )}
 
+      {/* 보드 크기 조절 패널 */}
+      {phase === 'playing' && (
+        <BoardSizePanel
+          scale={boardScale}
+          onIncrease={() => handleScaleChange(0.1)}
+          onDecrease={() => handleScaleChange(-0.1)}
+          disabled={isPaused || countdown !== null}
+        />
+      )}
+
       {/* HUD + 보드 */}
       {phase === 'playing' && (
         <div className={`game-content ${isPaused ? 'game-content-paused' : ''}`}>
@@ -495,10 +576,13 @@ export default function Game() {
           <div className="hud">
             <div className="hud-stage">
               <span className="hud-stage-label">STAGE</span>
-              <span className="hud-stage-num">{Math.min(stage, 5)}</span>
+              <span className="hud-stage-num">{Math.min(stage, MAX_STAGE)}</span>
             </div>
             <div className="hud-left">
-              <div className="hud-score">{score.toLocaleString()}점</div>
+              <div className="hud-score">
+                {score.toLocaleString()}점
+                {combo > 0 && <span className="hud-combo" key={combo}><Flame size={11} strokeWidth={2.5} />{combo} COMBO</span>}
+              </div>
               <div className="hud-pairs">
                 <span className="hud-pairs-dot" style={{ background: possiblePairs === 0 ? '#ef4444' : possiblePairs <= 3 ? '#ffd166' : '#4ecdc4' }} />
                 {possiblePairs}쌍
@@ -562,14 +646,16 @@ export default function Game() {
 
           {/* 보드 */}
           <div className="board-wrap">
-            <Board
-              board={board}
-              selected={selected}
-              pathCells={pathCells}
-              matchedCells={matchedCells}
-              currentPath={currentPath}
-              onCellClick={handleCellClick}
-            />
+            <div style={{ transform: `scale(${boardScale})`, transformOrigin: 'center center', transition: 'transform 0.2s ease' }}>
+              <Board
+                board={board}
+                selected={selected}
+                pathCells={pathCells}
+                matchedCells={matchedCells}
+                currentPath={currentPath}
+                onCellClick={handleCellClick}
+              />
+            </div>
           </div>
 
         </div>
@@ -625,6 +711,8 @@ export default function Game() {
       {showRegister && (
         <RankingRegisterModal
           score={finalScore}
+          stageReached={Math.min(stage, MAX_STAGE)}
+          cleared={phase === 'cleared'}
           onClose={() => setShowRegister(false)}
           onSuccess={(_rank, soopId) => {
             setHighlightId(soopId);

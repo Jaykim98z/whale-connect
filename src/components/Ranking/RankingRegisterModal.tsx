@@ -1,19 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
-import { Trophy, X, Sparkles, User, Check } from 'lucide-react';
+import { Trophy, X, Sparkles, User, Check, Star, Fish } from 'lucide-react';
 import { fetchSoopUser } from '../../services/soopAPI';
 import type { SoopUserInfo } from '../../services/soopAPI';
-import { saveScore, checkRankingEligibility } from '../../services/firebase';
+import { saveScore, checkRankingEligibility, isWCMember } from '../../services/firebase';
 import './RankingModal.css';
 
 interface Props {
   score: number;
+  stageReached: number;
+  cleared: boolean;
   onClose: () => void;
   onSuccess: (rank: number, soopId: string) => void;
 }
 
 type Phase = 'input' | 'submitting' | 'done' | 'error';
 
-export default function RankingRegisterModal({ score, onClose, onSuccess }: Props) {
+export default function RankingRegisterModal({ score, stageReached, cleared, onClose, onSuccess }: Props) {
   const [soopId, setSoopId] = useState('');
   const [userInfo, setUserInfo] = useState<SoopUserInfo | null>(null);
   const [phase, setPhase] = useState<Phase>('input');
@@ -40,13 +42,17 @@ export default function RankingRegisterModal({ score, onClose, onSuccess }: Prop
     checkRankingEligibility(score).then(setEligibility);
   }, [score]);
 
+  const isWCUser = userInfo ? isWCMember(userInfo.soopId) : false;
+  const [wcOnly, setWcOnly] = useState(false);
+
   const handleRegister = async () => {
     if (!userInfo) return;
     setPhase('submitting');
-    const result = await saveScore(score, userInfo.soopId, userInfo.nickname, userInfo.profileImage);
-    if (result.success && result.rank !== undefined) {
+    const result = await saveScore(score, userInfo.soopId, userInfo.nickname, userInfo.profileImage, stageReached, cleared);
+    if (result.success) {
+      setWcOnly(result.wcOnly ?? false);
       setPhase('done');
-      setTimeout(() => { onSuccess(result.rank!, userInfo.soopId); onClose(); }, 1800);
+      setTimeout(() => { onSuccess(result.rank ?? 0, userInfo.soopId); onClose(); }, 1800);
     } else {
       setPhase('error');
       if (result.error === 'LOWER_THAN_EXISTING') {
@@ -60,7 +66,11 @@ export default function RankingRegisterModal({ score, onClose, onSuccess }: Prop
   };
 
   const rankLabel = eligibility
-    ? eligibility.eligible ? `예상 순위 ${eligibility.estimatedRank}위` : `TOP 100 진입 불가 (100위: ${eligibility.minScore.toLocaleString()}점)`
+    ? eligibility.eligible
+      ? `예상 순위 ${eligibility.estimatedRank}위`
+      : isWCUser
+        ? <><Star size={13} fill="currentColor" style={{ verticalAlign: '-2px' }} /> 멤버 전용 랭킹에 등록됩니다</>
+        : `TOP 100 진입 불가 (100위: ${eligibility.minScore.toLocaleString()}점)`
     : '순위 계산 중...';
 
   return (
@@ -76,7 +86,7 @@ export default function RankingRegisterModal({ score, onClose, onSuccess }: Prop
           <span className="rm-score-value">{score.toLocaleString()}</span>
         </div>
 
-        <div className={`rm-eligibility ${eligibility && !eligibility.eligible ? 'rm-ineligible' : ''}`}>
+        <div className={`rm-eligibility ${eligibility && !eligibility.eligible && !isWCUser ? 'rm-ineligible' : ''}`}>
           {rankLabel}
         </div>
 
@@ -84,7 +94,10 @@ export default function RankingRegisterModal({ score, onClose, onSuccess }: Prop
           <div className="rm-done">
             <div className="rm-done-icon"><Sparkles size={40} color="#ffd166" /></div>
             <div className="rm-done-text">등록 완료!</div>
-            <div className="rm-done-rank">{eligibility?.estimatedRank ?? '?'}위</div>
+            {wcOnly
+              ? <div className="rm-done-rank" style={{ fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>멤버 랭킹 등재 <Fish size={15} /></div>
+              : <div className="rm-done-rank">{eligibility?.estimatedRank ?? '?'}위</div>
+            }
           </div>
         ) : phase === 'error' ? (
           <div className="rm-error-box">
@@ -130,7 +143,7 @@ export default function RankingRegisterModal({ score, onClose, onSuccess }: Prop
 
             <button
               className="rm-btn rm-btn-primary"
-              disabled={!userInfo || phase === 'submitting' || (eligibility !== null && !eligibility.eligible)}
+              disabled={!userInfo || phase === 'submitting' || (!isWCUser && eligibility !== null && !eligibility.eligible)}
               onClick={handleRegister}
             >
               {phase === 'submitting' ? '등록 중…' : '랭킹 등록하기'}

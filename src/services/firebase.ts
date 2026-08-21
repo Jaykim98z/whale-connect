@@ -26,8 +26,9 @@ export function trackEvent(name: string, params?: Record<string, unknown>) {
 // ── 고래상사 멤버 목록 ──
 export const WC_MEMBER_IDS = [
   'xpdpfv2', 'kimmaren77', 'melodingding', 'bach023', 'gyeonjahee',
-  'akdma9692', 'nlov555jij', 'doki0818', 'joaras2', 'ducke77',
-  'gatgdf', 'soyoung6056', 'chae1hana', 'eunpp0', 'poippoi52', 'himuru',
+  'nlov555jij', 'doki0818', 'joaras2', 'ducke77',
+  'gatgdf', 'soyoung6056', 'chae1hana', 'poippoi52',
+  'sellkey', 'peuhaha', 'nororo',
 ];
 
 export const isWCMember = (soopId: string | null | undefined): boolean => {
@@ -44,6 +45,8 @@ export interface RankingEntry {
   profileImage: string | null;
   score: number;
   isWC: boolean;
+  stageReached?: number;  // 도달한 스테이지 (저장용, 랭킹 표시 X)
+  cleared?: boolean;      // 전 스테이지 클리어 여부 (왕관 표시용)
   timestamp: Timestamp | null;
   createdAt: string;
 }
@@ -55,6 +58,7 @@ export interface SaveScoreResult {
   message?: string;
   isNewRecord?: boolean;
   existingBest?: number;
+  wcOnly?: boolean;  // WC 멤버이고 일반 TOP 100 미진입 (멤버 랭킹에만 등록됨)
 }
 
 // ── 랭킹 조회 ──
@@ -95,43 +99,69 @@ export async function checkRankingEligibility(score: number): Promise<{
 
 // ── 점수 저장 ──
 export async function saveScore(
-  score: number, soopId: string, playerName: string, profileImage: string | null
+  score: number, soopId: string, playerName: string, profileImage: string | null,
+  stageReached: number, cleared: boolean
 ): Promise<SaveScoreResult> {
   try {
     const normalizedId = soopId.toLowerCase().trim();
     const isWC = isWCMember(normalizedId);
 
-    // 기존 기록 확인
+    // ── 기존 기록 확인 (일반 랭킹)
     const existingQ = query(collection(db, 'wc-rankings'), where('soopId', '==', normalizedId));
     const existingSnap = await getDocs(existingQ);
+    let existingBest: number | null = existingSnap.empty ? null : existingSnap.docs[0].data().score as number;
 
-    if (!existingSnap.empty) {
-      const existingDoc = existingSnap.docs[0];
-      const existingScore = existingDoc.data().score as number;
-      if (score <= existingScore) {
-        return { success: false, error: 'LOWER_THAN_EXISTING', message: '이미 더 높은 점수가 등록되어 있습니다.', existingBest: existingScore };
-      }
-      await deleteDoc(doc(db, 'wc-rankings', existingDoc.id));
-      if (isWC) {
-        const wcQ = query(collection(db, 'wc-rankings-wc'), where('soopId', '==', normalizedId));
-        const wcSnap = await getDocs(wcQ);
-        for (const d of wcSnap.docs) await deleteDoc(doc(db, 'wc-rankings-wc', d.id));
+    // WC 멤버: 멤버 랭킹에서도 기존 기록 확인 (일반 랭킹에 없을 수 있음)
+    let existingWCSnap = null;
+    if (isWC) {
+      const wcQ = query(collection(db, 'wc-rankings-wc'), where('soopId', '==', normalizedId));
+      existingWCSnap = await getDocs(wcQ);
+      if (!existingWCSnap.empty) {
+        const wcScore = existingWCSnap.docs[0].data().score as number;
+        if (existingBest === null || wcScore > existingBest) existingBest = wcScore;
       }
     }
 
-    const eligibility = await checkRankingEligibility(score);
-    if (!eligibility.eligible) {
-      return { success: false, error: 'TOP_100_REQUIRED', message: `TOP 100 진입을 위해 ${eligibility.minScore + 1}점 이상이 필요합니다.` };
+    if (existingBest !== null && score <= existingBest) {
+      return { success: false, error: 'LOWER_THAN_EXISTING', message: '이미 더 높은 점수가 등록되어 있습니다.', existingBest };
     }
 
-    const data = { score, playerName, soopId: normalizedId, profileImage, isWC, timestamp: serverTimestamp(), createdAt: new Date().toISOString() };
-    await addDoc(collection(db, 'wc-rankings'), data);
-    if (isWC) await addDoc(collection(db, 'wc-rankings-wc'), data);
+    // 기존 기록 삭제
+    if (!existingSnap.empty) await deleteDoc(doc(db, 'wc-rankings', existingSnap.docs[0].id));
+    if (existingWCSnap && !existingWCSnap.empty) {
+      for (const d of existingWCSnap.docs) await deleteDoc(doc(db, 'wc-rankings-wc', d.id));
+    }
 
-    await cleanupOldRankings();
-    trackEvent('ranking_register', { score, rank: eligibility.estimatedRank, is_wc: isWC, is_update: !existingSnap.empty });
+    const data = { score, playerName, soopId: normalizedId, profileImage, isWC, stageReached, cleared, timestamp: serverTimestamp(), createdAt: new Date().toISOString() };
+    const isUpdate = existingBest !== null;
 
-    return { success: true, rank: eligibility.estimatedRank, isNewRecord: !existingSnap.empty };
+    if (isWC) {
+      // ── WC 멤버: 멤버 전용 랭킹에 항상 등록 ──
+      await addDoc(collection(db, 'wc-rankings-wc'), data);
+
+      // 일반 TOP 100은 자격이 있을 때만
+      const eligibility = await checkRankingEligibility(score);
+      if (eligibility.eligible) {
+        await addDoc(collection(db, 'wc-rankings'), data);
+        await cleanupOldRankings();
+        trackEvent('ranking_register', { score, rank: eligibility.estimatedRank, is_wc: true, is_update: isUpdate });
+        return { success: true, rank: eligibility.estimatedRank, isNewRecord: isUpdate, wcOnly: false };
+      }
+
+      trackEvent('ranking_register', { score, is_wc: true, wc_only: true, is_update: isUpdate });
+      return { success: true, rank: eligibility.estimatedRank, isNewRecord: isUpdate, wcOnly: true };
+
+    } else {
+      // ── 일반 사용자: TOP 100 자격 확인 ──
+      const eligibility = await checkRankingEligibility(score);
+      if (!eligibility.eligible) {
+        return { success: false, error: 'TOP_100_REQUIRED', message: `TOP 100 진입을 위해 ${eligibility.minScore + 1}점 이상이 필요합니다.` };
+      }
+      await addDoc(collection(db, 'wc-rankings'), data);
+      await cleanupOldRankings();
+      trackEvent('ranking_register', { score, rank: eligibility.estimatedRank, is_wc: false, is_update: isUpdate });
+      return { success: true, rank: eligibility.estimatedRank, isNewRecord: isUpdate };
+    }
   } catch (e) {
     return { success: false, error: 'UNKNOWN', message: String(e) };
   }
