@@ -33,7 +33,7 @@ export interface CardDef {
   name: string;
   color: string;      // 카드 배경색
   textColor: string;  // 텍스트 색상
-  image: string;      // public 폴더 기준 경로
+  image?: string;     // public 폴더 기준 경로 (아이템 카드는 lucide 아이콘을 사용하므로 없음)
   isItem: boolean;
   isFanchar: boolean; // true = 팬캐릭 (스테이지마다 랜덤 선발)
   itemEffect?: 'time' | 'shuffle';
@@ -69,6 +69,6 @@ export const CARD_DEFS: CardDef[] = [
   { id: 24, name: '다시마',   color: '#9FE0C8', textColor: '#0a3d33', image: '/chars/fanchars/다시마.png',  isItem: false, isFanchar: true },
   { id: 25, name: '스윗가비단', color: '#F0D9A8', textColor: '#5a3d00', image: '/chars/fanchars/스윗가비단.png', isItem: false, isFanchar: true },
   // ── Items (id 26–27) ──────────────────────────────────────────────────────
-  { id: 26, name: '시간추가', color: '#222222', textColor: '#ffffff', image: '/item/time.svg',              isItem: true,  isFanchar: false, itemEffect: 'time'    },
-  { id: 27, name: '셔플',     color: '#222222', textColor: '#ffffff', image: '/item/shuffle.svg',           isItem: true,  isFanchar: false, itemEffect: 'shuffle' },
+  { id: 26, name: '시간추가', color: '#222222', textColor: '#ffffff', isItem: true,  isFanchar: false, itemEffect: 'time'    },
+  { id: 27, name: '셔플',     color: '#222222', textColor: '#ffffff', isItem: true,  isFanchar: false, itemEffect: 'shuffle' },
 ];

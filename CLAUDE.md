@@ -14,9 +14,17 @@
 
 ## 배포 절차
 
+랭킹 저장이 Cloud Function(`saveRanking`)을 거치므로 **functions → hosting → rules 순서**를 지킨다.
+rules를 먼저 올리면 새 함수·클라이언트가 올라가기 전까지 랭킹 등록이 막힌다. (모두 사용자 승인 후에만)
+
 ```
-npm run build
-firebase deploy --only hosting   # ← 사용자 승인 후에만
+npm test && npm run build
+firebase deploy --only functions
+firebase deploy --only hosting
+firebase deploy --only firestore:rules
 ```
+
+- 운영 사이트의 출처 브랜치를 확인하고 배포한다. `main`이 최신이라고 가정하지 않는다.
+- 함수 배포 후 `saveRanking`이 403을 반환하면 Cloud Run `saveranking` 서비스에 공개 호출(allUsers → Cloud Run Invoker) 권한이 있는지 확인한다.
 
 배포 URL: https://whale-connect.web.app
