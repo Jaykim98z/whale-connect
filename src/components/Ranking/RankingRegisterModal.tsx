@@ -44,13 +44,15 @@ export default function RankingRegisterModal({ score, stageReached, cleared, onC
 
   const isWCUser = userInfo ? isWCMember(userInfo.soopId) : false;
   const [wcOnly, setWcOnly] = useState(false);
+  const [registeredRank, setRegisteredRank] = useState<number | null>(null);
 
   const handleRegister = async () => {
     if (!userInfo) return;
     setPhase('submitting');
-    const result = await saveScore(score, userInfo.soopId, userInfo.nickname, userInfo.profileImage, stageReached, cleared);
+    const result = await saveScore(score, userInfo.soopId, stageReached, cleared);
     if (result.success) {
       setWcOnly(result.wcOnly ?? false);
+      setRegisteredRank(result.rank ?? null);
       setPhase('done');
       setTimeout(() => { onSuccess(result.rank ?? 0, userInfo.soopId); onClose(); }, 1800);
     } else {
@@ -59,6 +61,8 @@ export default function RankingRegisterModal({ score, stageReached, cleared, onC
         setErrorMsg(`이미 더 높은 점수(${result.existingBest?.toLocaleString()}점)가 등록되어 있습니다.`);
       } else if (result.error === 'TOP_100_REQUIRED') {
         setErrorMsg(result.message ?? 'TOP 100 진입 불가');
+      } else if (result.error === 'NOT_FOUND') {
+        setErrorMsg('SOOP 아이디를 확인할 수 없습니다.');
       } else {
         setErrorMsg('등록 중 오류가 발생했습니다. 다시 시도해주세요.');
       }
@@ -96,7 +100,7 @@ export default function RankingRegisterModal({ score, stageReached, cleared, onC
             <div className="rm-done-text">등록 완료!</div>
             {wcOnly
               ? <div className="rm-done-rank" style={{ fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>멤버 랭킹 등재 <Fish size={15} /></div>
-              : <div className="rm-done-rank">{eligibility?.estimatedRank ?? '?'}위</div>
+              : <div className="rm-done-rank">{registeredRank ?? eligibility?.estimatedRank ?? '?'}위</div>
             }
           </div>
         ) : phase === 'error' ? (

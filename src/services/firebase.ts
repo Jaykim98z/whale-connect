@@ -1,9 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getAnalytics, logEvent } from 'firebase/analytics';
 import {
-  getFirestore, collection, addDoc, getDocs, deleteDoc, doc,
-  query, orderBy, limit, where, serverTimestamp, writeBatch, Timestamp,
+  getFirestore, collection, getDocs, query, orderBy, limit, Timestamp,
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import type { FunctionsError } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -24,6 +25,7 @@ export function trackEvent(name: string, params?: Record<string, unknown>) {
 }
 
 // ── 고래상사 멤버 목록 ──
+// 등록 창의 안내 문구 표시용. 실제 멤버 판정은 saveRanking(functions/src/index.ts)의 목록이 기준 — 두 목록을 함께 수정할 것
 export const WC_MEMBER_IDS = [
   'xpdpfv2', 'kimmaren77', 'melodingding', 'bach023', 'gyeonjahee',
   'nlov555jij', 'doki0818', 'joaras2', 'ducke77',
@@ -54,7 +56,7 @@ export interface RankingEntry {
 export interface SaveScoreResult {
   success: boolean;
   rank?: number;
-  error?: string;
+  error?: 'LOWER_THAN_EXISTING' | 'TOP_100_REQUIRED' | 'NOT_FOUND' | 'UNKNOWN';
   message?: string;
   isNewRecord?: boolean;
   existingBest?: number;
@@ -97,84 +99,43 @@ export async function checkRankingEligibility(score: number): Promise<{
   }
 }
 
-// ── 점수 저장 ──
-export async function saveScore(
-  score: number, soopId: string, playerName: string, profileImage: string | null,
-  stageReached: number, cleared: boolean
-): Promise<SaveScoreResult> {
-  try {
-    const normalizedId = soopId.toLowerCase().trim();
-    const isWC = isWCMember(normalizedId);
+// ── 점수 저장 (Cloud Function 경유 — 닉네임·프로필·멤버 여부는 서버가 결정) ──
+const functions = getFunctions(app, 'asia-northeast3');
 
-    // ── 기존 기록 확인 (일반 랭킹)
-    const existingQ = query(collection(db, 'wc-rankings'), where('soopId', '==', normalizedId));
-    const existingSnap = await getDocs(existingQ);
-    let existingBest: number | null = existingSnap.empty ? null : existingSnap.docs[0].data().score as number;
-
-    // WC 멤버: 멤버 랭킹에서도 기존 기록 확인 (일반 랭킹에 없을 수 있음)
-    let existingWCSnap = null;
-    if (isWC) {
-      const wcQ = query(collection(db, 'wc-rankings-wc'), where('soopId', '==', normalizedId));
-      existingWCSnap = await getDocs(wcQ);
-      if (!existingWCSnap.empty) {
-        const wcScore = existingWCSnap.docs[0].data().score as number;
-        if (existingBest === null || wcScore > existingBest) existingBest = wcScore;
-      }
-    }
-
-    if (existingBest !== null && score <= existingBest) {
-      return { success: false, error: 'LOWER_THAN_EXISTING', message: '이미 더 높은 점수가 등록되어 있습니다.', existingBest };
-    }
-
-    // 기존 기록 삭제
-    if (!existingSnap.empty) await deleteDoc(doc(db, 'wc-rankings', existingSnap.docs[0].id));
-    if (existingWCSnap && !existingWCSnap.empty) {
-      for (const d of existingWCSnap.docs) await deleteDoc(doc(db, 'wc-rankings-wc', d.id));
-    }
-
-    const data = { score, playerName, soopId: normalizedId, profileImage, isWC, stageReached, cleared, timestamp: serverTimestamp(), createdAt: new Date().toISOString() };
-    const isUpdate = existingBest !== null;
-
-    if (isWC) {
-      // ── WC 멤버: 멤버 전용 랭킹에 항상 등록 ──
-      await addDoc(collection(db, 'wc-rankings-wc'), data);
-
-      // 일반 TOP 100은 자격이 있을 때만
-      const eligibility = await checkRankingEligibility(score);
-      if (eligibility.eligible) {
-        await addDoc(collection(db, 'wc-rankings'), data);
-        await cleanupOldRankings();
-        trackEvent('ranking_register', { score, rank: eligibility.estimatedRank, is_wc: true, is_update: isUpdate });
-        return { success: true, rank: eligibility.estimatedRank, isNewRecord: isUpdate, wcOnly: false };
-      }
-
-      trackEvent('ranking_register', { score, is_wc: true, wc_only: true, is_update: isUpdate });
-      return { success: true, rank: eligibility.estimatedRank, isNewRecord: isUpdate, wcOnly: true };
-
-    } else {
-      // ── 일반 사용자: TOP 100 자격 확인 ──
-      const eligibility = await checkRankingEligibility(score);
-      if (!eligibility.eligible) {
-        return { success: false, error: 'TOP_100_REQUIRED', message: `TOP 100 진입을 위해 ${eligibility.minScore + 1}점 이상이 필요합니다.` };
-      }
-      await addDoc(collection(db, 'wc-rankings'), data);
-      await cleanupOldRankings();
-      trackEvent('ranking_register', { score, rank: eligibility.estimatedRank, is_wc: false, is_update: isUpdate });
-      return { success: true, rank: eligibility.estimatedRank, isNewRecord: isUpdate };
-    }
-  } catch (e) {
-    return { success: false, error: 'UNKNOWN', message: String(e) };
-  }
+interface SaveRankingResponse {
+  success: true;
+  rank: number;
+  isNewRecord: boolean;
+  isWC: boolean;
+  wcOnly: boolean;
 }
 
-async function cleanupOldRankings() {
+const saveRankingFn = httpsCallable<
+  { soopId: string; score: number; stageReached: number; cleared: boolean },
+  SaveRankingResponse
+>(functions, 'saveRanking');
+
+export async function saveScore(
+  score: number, soopId: string, stageReached: number, cleared: boolean,
+): Promise<SaveScoreResult> {
   try {
-    const q = query(collection(db, 'wc-rankings'), orderBy('score', 'desc'));
-    const snap = await getDocs(q);
-    const overflow = snap.docs.slice(100);
-    if (overflow.length === 0) return;
-    const batch = writeBatch(db);
-    overflow.forEach(d => batch.delete(doc(db, 'wc-rankings', d.id)));
-    await batch.commit();
-  } catch { /* ignore */ }
+    const { data } = await saveRankingFn({ soopId, score, stageReached, cleared });
+    trackEvent('ranking_register', {
+      score, rank: data.rank, is_wc: data.isWC, wc_only: data.wcOnly, is_update: data.isNewRecord,
+    });
+    return { success: true, rank: data.rank, isNewRecord: data.isNewRecord, wcOnly: data.wcOnly };
+  } catch (e) {
+    const err = e as FunctionsError;
+    const details = (err.details ?? {}) as { existingBest?: number };
+    switch (err.code) {
+      case 'functions/already-exists':
+        return { success: false, error: 'LOWER_THAN_EXISTING', message: err.message, existingBest: details.existingBest };
+      case 'functions/failed-precondition':
+        return { success: false, error: 'TOP_100_REQUIRED', message: err.message };
+      case 'functions/not-found':
+        return { success: false, error: 'NOT_FOUND', message: err.message };
+      default:
+        return { success: false, error: 'UNKNOWN', message: String(e) };
+    }
+  }
 }

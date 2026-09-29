@@ -1,163 +1,163 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { initializeApp } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 initializeApp();
-
 const db = getFirestore();
 
-// ── 고래상사 멤버 목록 (firebase.ts와 동기화 유지) ──
+const RANKINGS = 'wc-rankings';
+const WC_RANKINGS = 'wc-rankings-wc';
+const TOP_N = 100;
+const MIN_SCORE = 1;
+const MAX_SCORE = 99_999;
+const MAX_STAGE = 7;
+
+// ── 고래상사 멤버 목록 — 멤버 여부 판정의 기준 (클라이언트 목록은 안내 표시용) ──
 const WC_MEMBER_IDS = [
   'xpdpfv2', 'kimmaren77', 'melodingding', 'bach023', 'gyeonjahee',
-  'akdma9692', 'nlov555jij', 'doki0818', 'joaras2', 'ducke77',
-  'gatgdf', 'soyoung6056', 'chae1hana', 'eunpp0', 'poippoi52', 'himuru',
+  'nlov555jij', 'doki0818', 'joaras2', 'ducke77',
+  'gatgdf', 'soyoung6056', 'chae1hana', 'poippoi52',
+  'sellkey', 'peuhaha', 'nororo',
 ];
 
-// 이론적 최대 점수:
-//   전 스테이지 페어 합계: (40+46+53+60+67) × 10 = 2,660점
-//   클리어 보너스:  5 × 100 = 500점
-//   시간 보너스: 넉넉하게 6,000점 (최대 600초 × 10)
-//   합계 ≈ 9,160점 → 10,000점을 상한으로, 여유분 포함 99,999 허용
-const MAX_SCORE = 99_999;
-const MIN_SCORE = 1;
-
-interface SaveScoreRequest {
-  score: unknown;
+interface SaveRankingRequest {
   soopId: unknown;
-  playerName: unknown;
-  profileImage: unknown;
+  score: unknown;
+  stageReached: unknown;
+  cleared: unknown;
 }
 
-interface SaveScoreResult {
-  success: boolean;
+interface SaveRankingResult {
+  success: true;
   rank: number;
   isNewRecord: boolean;
+  isWC: boolean;
+  wcOnly: boolean; // 멤버이고 전체 TOP 100 미진입 → 멤버 랭킹에만 등록됨
+}
+
+interface SoopProfile {
+  nickname: string;
+  profileImage: string | null;
+}
+
+interface SoopStationResponse {
+  user_nick?: string;
+  profile_image?: string;
+  station?: { user_nick?: string; profile_image?: string };
+}
+
+// SOOP 방송국 API로 닉네임·프로필을 서버에서 직접 조회 (클라이언트 값은 신뢰하지 않음)
+async function fetchSoopProfile(soopId: string): Promise<SoopProfile | null> {
+  try {
+    const res = await fetch(`https://bjapi.afreecatv.com/api/${encodeURIComponent(soopId)}/station`, {
+      headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (WhaleConnect ranking)' },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as SoopStationResponse;
+    const nickname = (data.user_nick || data.station?.user_nick || '').trim().slice(0, 50);
+    if (!nickname) return null;
+    const raw = data.profile_image || data.station?.profile_image || '';
+    const profileImage = raw.startsWith('//') ? `https:${raw}` : /^https?:\/\//.test(raw) ? raw : null;
+    return { nickname, profileImage };
+  } catch {
+    return null;
+  }
+}
+
+// 전체 랭킹 TOP_N 밖으로 밀려난 문서 정리 (멤버 랭킹은 인원이 적어 정리하지 않음)
+async function trimRankings(): Promise<void> {
+  const overflow = await db.collection(RANKINGS).orderBy('score', 'desc').offset(TOP_N).get();
+  if (overflow.empty) return;
+  const batch = db.batch();
+  overflow.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
 }
 
 /**
- * saveRanking — 점수 저장 Cloud Function
+ * saveRanking — 랭킹 저장의 유일한 경로
+ * 클라이언트 쓰기는 firestore.rules에서 전면 차단되어 있고, Admin SDK는 규칙을 우회한다.
  *
- * 클라이언트가 직접 Firestore에 쓰지 않고 이 함수를 통해서만 저장합니다.
- * Admin SDK는 Firestore 보안 규칙을 우회하므로,
- * 규칙에서 클라이언트 직접 쓰기를 차단해도 이 함수는 정상 동작합니다.
+ * 등록 규칙:
+ * - 아이디당 최고 점수 1개 (두 랭킹 중 더 높은 기록보다 높아야 갱신)
+ * - 일반 사용자: 전체 TOP 100에 들 때만 등록
+ * - 고래상사 멤버: 멤버 랭킹에는 항상 등록, 전체 랭킹은 TOP 100에 들 때만
  */
-export const saveRanking = onCall<SaveScoreRequest, Promise<SaveScoreResult>>(
-  { region: 'asia-northeast3' }, // 서울 리전
+export const saveRanking = onCall<SaveRankingRequest, Promise<SaveRankingResult>>(
+  // invoker: 'public' — 브라우저에서 호출하는 callable이므로 Cloud Run 공개 호출 권한 필요
+  { region: 'asia-northeast3', invoker: 'public' },
   async (request) => {
-    const { score, soopId, playerName, profileImage } = request.data;
+    const { soopId, score, stageReached, cleared } = request.data;
 
-    // ── 1. 기본 타입 검증 ──
-    if (typeof score !== 'number' || typeof soopId !== 'string' || typeof playerName !== 'string') {
+    if (typeof soopId !== 'string' || typeof score !== 'number'
+      || typeof stageReached !== 'number' || typeof cleared !== 'boolean') {
       throw new HttpsError('invalid-argument', '잘못된 데이터 형식입니다.');
     }
-
-    // ── 2. 점수 범위 검증 ──
-    if (!Number.isFinite(score) || !Number.isInteger(score) || score < MIN_SCORE || score > MAX_SCORE) {
+    if (!Number.isInteger(score) || score < MIN_SCORE || score > MAX_SCORE) {
       throw new HttpsError('invalid-argument', `점수는 ${MIN_SCORE}~${MAX_SCORE} 사이 정수여야 합니다.`);
     }
-
-    // ── 3. soopId 검증 ──
-    const normalizedId = soopId.toLowerCase().trim();
-    if (normalizedId.length < 1 || normalizedId.length > 50) {
-      throw new HttpsError('invalid-argument', 'SOOP ID가 유효하지 않습니다.');
+    if (!Number.isInteger(stageReached) || stageReached < 1 || stageReached > MAX_STAGE) {
+      throw new HttpsError('invalid-argument', `도달 스테이지는 1~${MAX_STAGE} 사이 정수여야 합니다.`);
+    }
+    const id = soopId.toLowerCase().trim();
+    if (id.length < 1 || id.length > 50) {
+      throw new HttpsError('invalid-argument', 'SOOP 아이디가 유효하지 않습니다.');
     }
 
-    // ── 4. playerName 검증 ──
-    const trimmedName = playerName.trim().slice(0, 50);
-    if (!trimmedName) {
-      throw new HttpsError('invalid-argument', '닉네임이 유효하지 않습니다.');
+    const profile = await fetchSoopProfile(id);
+    if (!profile) {
+      throw new HttpsError('not-found', 'SOOP 아이디를 확인할 수 없습니다.');
     }
 
-    // ── 5. profileImage 정제 (http/https URL만 허용, 그 외 null) ──
-    const safeProfileImage =
-      typeof profileImage === 'string' && /^https?:\/\/.+/.test(profileImage)
-        ? profileImage
-        : null;
+    const isWC = WC_MEMBER_IDS.includes(id);
 
-    const isWC = WC_MEMBER_IDS.includes(normalizedId);
+    const result = await db.runTransaction(async (tx) => {
+      // 트랜잭션: 모든 읽기를 쓰기 전에 수행
+      const existingSnap = await tx.get(db.collection(RANKINGS).where('soopId', '==', id));
+      const wcExistingSnap = await tx.get(db.collection(WC_RANKINGS).where('soopId', '==', id));
+      const topSnap = await tx.get(db.collection(RANKINGS).orderBy('score', 'desc').limit(TOP_N));
 
-    // ── 6. 기존 기록 조회 ──
-    const existingSnap = await db
-      .collection('wc-rankings')
-      .where('soopId', '==', normalizedId)
-      .get();
-
-    let isNewRecord = false;
-
-    if (!existingSnap.empty) {
-      const existingScore = existingSnap.docs[0].data().score as number;
-
-      if (score <= existingScore) {
-        throw new HttpsError(
-          'already-exists',
-          `이미 더 높은 점수(${existingScore})가 등록되어 있습니다.`,
-        );
-      }
-
-      // 기존 기록 삭제 (더 높은 점수로 갱신)
-      await existingSnap.docs[0].ref.delete();
-
-      if (isWC) {
-        const wcSnap = await db
-          .collection('wc-rankings-wc')
-          .where('soopId', '==', normalizedId)
-          .get();
-        if (!wcSnap.empty) {
-          const batch = db.batch();
-          wcSnap.docs.forEach(d => batch.delete(d.ref));
-          await batch.commit();
+      const previous = [...existingSnap.docs, ...wcExistingSnap.docs];
+      if (previous.length > 0) {
+        const existingBest = Math.max(...previous.map(d => d.get('score') as number));
+        if (score <= existingBest) {
+          throw new HttpsError('already-exists', `이미 더 높은 점수(${existingBest})가 등록되어 있습니다.`, { existingBest });
         }
       }
 
-      isNewRecord = true;
-    }
-
-    // ── 7. TOP 100 진입 가능 여부 ──
-    const top100Snap = await db
-      .collection('wc-rankings')
-      .orderBy('score', 'desc')
-      .limit(100)
-      .get();
-
-    const currentCount = top100Snap.size;
-    let estimatedRank = 1;
-
-    if (currentCount > 0) {
-      estimatedRank = top100Snap.docs.filter(d => (d.data().score as number) > score).length + 1;
-
-      if (currentCount >= 100) {
-        const minScore = top100Snap.docs[currentCount - 1].data().score as number;
-        if (score <= minScore) {
-          throw new HttpsError(
-            'failed-precondition',
-            `TOP 100 진입을 위해 ${minScore + 1}점 이상이 필요합니다.`,
-          );
-        }
+      // 내 기존 기록을 제외한 TOP 100 기준으로 진입 여부 판정
+      const others = topSnap.docs.filter(d => d.get('soopId') !== id);
+      const minScore = others.length >= TOP_N ? (others[others.length - 1].get('score') as number) : 0;
+      const eligible = others.length < TOP_N || score > minScore;
+      if (!eligible && !isWC) {
+        throw new HttpsError('failed-precondition', `TOP ${TOP_N} 진입을 위해 ${minScore + 1}점 이상이 필요합니다.`, { minScore });
       }
-    }
 
-    // ── 8. 저장 ──
-    const data = {
-      score,
-      playerName: trimmedName,
-      soopId: normalizedId,
-      profileImage: safeProfileImage,
-      isWC,
-      timestamp: FieldValue.serverTimestamp(),
-      createdAt: new Date().toISOString(),
-    };
+      previous.forEach(d => tx.delete(d.ref));
 
-    await db.collection('wc-rankings').add(data);
-    if (isWC) await db.collection('wc-rankings-wc').add(data);
+      const data = {
+        score,
+        playerName: profile.nickname,
+        soopId: id,
+        profileImage: profile.profileImage,
+        isWC,
+        stageReached,
+        cleared,
+        timestamp: FieldValue.serverTimestamp(),
+        createdAt: new Date().toISOString(),
+      };
+      if (eligible) tx.set(db.collection(RANKINGS).doc(), data);
+      if (isWC) tx.set(db.collection(WC_RANKINGS).doc(), data);
 
-    // ── 9. TOP 100 초과 문서 정리 (WriteBatch) ──
-    const allSnap = await db.collection('wc-rankings').orderBy('score', 'desc').get();
-    if (allSnap.size > 100) {
-      const batch = db.batch();
-      allSnap.docs.slice(100).forEach(d => batch.delete(d.ref));
-      await batch.commit();
-    }
+      return {
+        rank: others.filter(d => (d.get('score') as number) > score).length + 1,
+        isNewRecord: previous.length > 0,
+        wcOnly: !eligible,
+      };
+    });
 
-    return { success: true, rank: estimatedRank, isNewRecord };
+    // 정리는 부가 작업 — 실패해도 등록 결과에는 영향 없음
+    await trimRankings().catch(() => {});
+
+    return { success: true, isWC, ...result };
   },
 );
