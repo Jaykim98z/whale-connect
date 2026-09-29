@@ -1,16 +1,17 @@
 import { CARD_TYPES, OBSTACLE_ID } from './constants';
 import { findPath } from './connectLogic';
+import type { Rng } from './rng';
 
 export type Board = (number | null)[][];
 
-function shuffle<T>(arr: T[]): void {
+function shuffle<T>(arr: T[], rng: Rng): void {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
 }
 
-export function shuffleBoard(board: Board): Board {
+export function shuffleBoard(board: Board, rng: Rng): Board {
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
   // 장애물(-1)은 제외하고 일반 카드만 셔플
@@ -21,7 +22,7 @@ export function shuffleBoard(board: Board): Board {
     }
   }
   const values = remaining.map(pos => board[pos.r][pos.c] as number);
-  shuffle(values);
+  shuffle(values, rng);
   const newBoard: Board = board.map(row => [...row]);
   remaining.forEach((pos, i) => { newBoard[pos.r][pos.c] = values[i]; });
   return newBoard;
@@ -34,7 +35,7 @@ export function shuffleBoard(board: Board): Board {
  * 이 함수는 점유된 칸(카드+장애물) 전체를 섞어 장애물 위치까지 바꾼다.
  * 가능하면 연결쌍이 1개 이상 나올 때까지 재시도한다.
  */
-export function shuffleBoardWithObstacles(board: Board, maxAttempts = 30): Board {
+export function shuffleBoardWithObstacles(board: Board, rng: Rng, maxAttempts = 30): Board {
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
 
@@ -49,7 +50,7 @@ export function shuffleBoardWithObstacles(board: Board, maxAttempts = 30): Board
 
   let best: Board = board;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    shuffle(values);
+    shuffle(values, rng);
     const newBoard: Board = board.map(row => [...row]);
     occupied.forEach((pos, i) => { newBoard[pos.r][pos.c] = values[i]; });
     best = newBoard;
@@ -111,6 +112,7 @@ export function generateBoardWithObstacles(
   cols: number,
   tileCounts: number[] | number,
   obstacleCount: number,
+  rng: Rng,
 ): Board {
   const counts = Array.isArray(tileCounts)
     ? tileCounts
@@ -121,7 +123,7 @@ export function generateBoardWithObstacles(
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++)
       allPos.push({ r, c });
-  shuffle(allPos);
+  shuffle(allPos, rng);
 
   const obstaclePos = allPos.slice(0, obstacleCount);
   const cardPos     = allPos.slice(obstacleCount);
@@ -131,7 +133,7 @@ export function generateBoardWithObstacles(
   for (let id = 0; id < counts.length; id++)
     for (let k = 0; k < counts[id]; k++)
       tiles.push(id);
-  shuffle(tiles);
+  shuffle(tiles, rng);
 
   // 보드 구성
   const board: Board = Array.from({ length: rows }, () => Array(cols).fill(null));
