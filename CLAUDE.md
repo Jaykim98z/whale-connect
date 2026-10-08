@@ -20,9 +20,14 @@ rules를 먼저 올리면 새 함수·클라이언트가 올라가기 전까지 
 ```
 npm test && npm run build
 firebase deploy --only functions
+firebase deploy --only database
 firebase deploy --only hosting
 firebase deploy --only firestore:rules
 ```
+
+- 멀티플레이는 Realtime Database를 쓴다. `database` 규칙(`database.rules.json`)이 hosting보다 먼저 올라가야 새 클라이언트가 방을 만들 수 있다.
+- 빌드 전에 `.env`에 `VITE_FIREBASE_DATABASE_URL`이 있는지 확인한다. 없으면 멀티플레이 버튼이 숨겨진 채로 빌드된다.
+- 로컬에서 멀티를 시험할 때는 `firebase emulators:start --only database`를 띄우고 `.env.local`에 `VITE_DATABASE_EMULATOR_PORT=9000`을 둔다.
 
 - 운영 사이트의 출처 브랜치를 확인하고 배포한다. `main`이 최신이라고 가정하지 않는다.
 - 함수 배포 후 `saveRanking`이 403을 반환하면 Cloud Run `saveranking` 서비스에 공개 호출(allUsers → Cloud Run Invoker) 권한이 있는지 확인한다.

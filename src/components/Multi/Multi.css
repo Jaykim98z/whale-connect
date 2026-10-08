@@ -1,0 +1,496 @@
+/* ── 멀티플레이: 입장 · 대기실 (StartScreen의 ss-card 위에 얹는다) ── */
+.mp-card {
+  max-width: 420px;
+  gap: 12px;
+}
+
+.mp-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #7ab8d4;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  z-index: 1;
+}
+.mp-back:hover { color: #2b9ed4; }
+
+.mp-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 900;
+  color: #1b3a6b;
+  position: relative;
+  z-index: 1;
+}
+
+.mp-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #6b8aaa;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.mp-notice,
+.mp-error {
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+}
+.mp-notice { background: #fff8e1; color: #9a6200; border: 1px solid #fde3a0; }
+.mp-error  { background: #fff1f1; color: #c0392b; border: 1px solid #f7c6c6; }
+
+/* 닉네임 / SOOP 아이디 선택 */
+.mp-tabs {
+  width: 100%;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #eaf6fc;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+.mp-tab {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #7ab8d4;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.mp-tab-on {
+  background: #fff;
+  color: #2b9ed4;
+  box-shadow: 0 1px 4px rgba(78,197,224,0.25);
+}
+
+.mp-field {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+  z-index: 1;
+}
+
+.mp-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2b9ed4;
+}
+.mp-label small { font-weight: 600; color: #9ab8cc; }
+
+.mp-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: 2px solid #b8e4f5;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1b3a6b;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.mp-input:focus { border-color: #4ec5e0; box-shadow: 0 0 0 3px rgba(78,197,224,0.18); }
+.mp-input::placeholder { color: #b5cbd9; font-weight: 600; }
+
+.mp-or {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #9ab8cc;
+  position: relative;
+  z-index: 1;
+}
+.mp-or::before,
+.mp-or::after { content: ''; flex: 1; height: 1px; background: #dbeef7; }
+
+.mp-join {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.mp-input-code {
+  flex: 1;
+  text-align: center;
+  letter-spacing: 4px;
+  font-size: 18px;
+  font-weight: 900;
+}
+.mp-input-code::placeholder { letter-spacing: 0; font-size: 14px; }
+
+.mp-join-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 2px solid #4ec5e0;
+  background: #fff;
+  color: #2b9ed4;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mp-join-btn:hover:not(:disabled) { background: #e8f6ff; }
+
+.mp-card button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── 대기실 ── */
+.mp-code-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #9ab8cc;
+  position: relative;
+  z-index: 1;
+}
+
+.mp-code {
+  margin: -6px 0 0;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  padding-left: 8px; /* 마지막 글자 뒤 자간만큼 보정해 가운데 정렬 */
+  color: #1b3a6b;
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  z-index: 1;
+}
+
+.mp-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #b8e4f5;
+  background: #f4fbff;
+  color: #2b9ed4;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+.mp-copy:hover { background: #e8f6ff; }
+
+.mp-players-head {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b8aaa;
+  position: relative;
+  z-index: 1;
+}
+.mp-players-head strong { color: #2b9ed4; }
+
+.mp-players {
+  width: 100%;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.mp-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: #f6fbfe;
+  border: 1.5px solid #e2f1f9;
+}
+.mp-player-me { border-color: #4ec5e0; background: #edf9fd; }
+
+.mp-player-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1b3a6b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #dff3fb;
+  color: #2b9ed4;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.mp-badge-host { background: #fff3c4; color: #b07400; }
+
+.mp-rules,
+.mp-hint,
+.mp-waiting {
+  margin: 0;
+  font-size: 12px;
+  color: #8aa5b8;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+.mp-waiting { font-size: 14px; font-weight: 800; color: #2b9ed4; padding: 10px 0; }
+
+.mp-loading {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #cceeff 0%, #e8f6ff 40%, #ffffff 100%);
+  color: #2b9ed4;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* ── 아바타 ── */
+.mp-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #e2f1f9;
+}
+.mp-avatar-initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* ── 대전 화면: 보드 옆에 순위표 ── */
+.versus-layout {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+.versus-layout .game-content {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* 순위표(240px) + 간격·여백(60px)만큼 보드가 쓸 수 있는 폭을 줄인다 */
+.versus-layout .board { --bmax-w: calc(100vw - 300px); }
+.versus-layout .board-wrap { width: calc(100vw - 300px); max-width: none; }
+.versus-layout .hud { max-width: min(calc(100vw - 300px), 720px); }
+
+.hud-stage-unit { font-size: 12px; font-weight: 800; margin-left: 1px; }
+
+/* 장애물 부수기 표시 — 버튼처럼 생겼지만 누르는 대상은 보드의 장애물 */
+.hud-break { cursor: default; }
+.hud-break:hover { transform: none; }
+.hud-break-empty { opacity: 0.45; }
+
+/* ── 순위표 ── */
+.lb {
+  width: 240px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(184,228,245,0.8);
+  border-radius: 14px;
+  padding: 10px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 12px rgba(78,197,224,0.12);
+}
+
+.lb-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #9ab8cc;
+  padding: 0 4px 8px;
+}
+
+.lb-rows { position: relative; }
+
+.lb-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: #f6fbfe;
+  border: 1.5px solid #e2f1f9;
+  transition: transform 0.45s cubic-bezier(0.22, 0.68, 0, 1.1), background 0.2s;
+}
+.lb-row-me { background: #edf9fd; border-color: #4ec5e0; z-index: 1; }
+.lb-row-off { opacity: 0.5; }
+
+.lb-rank {
+  width: 20px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #9ab8cc;
+  flex-shrink: 0;
+}
+.lb-rank-1 { color: #f59e0b; }
+.lb-rank-2 { color: #8aa5b8; }
+.lb-rank-3 { color: #c47a3a; }
+
+.lb-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lb-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #1b3a6b;
+}
+.lb-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.lb-tag {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: #dff3fb;
+  color: #2b9ed4;
+  font-size: 9px;
+  font-weight: 800;
+}
+.lb-tag-off { background: #fde2e2; color: #c0392b; }
+
+.lb-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(78,197,224,0.15);
+  overflow: hidden;
+}
+.lb-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #4ec5e0, #2b9ed4);
+  transition: width 0.3s ease;
+}
+
+.lb-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 14px;
+  font-weight: 900;
+  color: #ff8c00;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.lb-progress { font-size: 10px; font-weight: 700; color: #9ab8cc; }
+
+/* ── 결과 창 ── */
+.versus-result { max-width: 360px; overflow: visible; }
+.versus-result .lb { width: 100%; background: transparent; border: none; box-shadow: none; padding: 0; }
+.versus-result .result-sub { font-size: 13px; }
+.versus-result .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.versus-result-bonus {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #f59e0b;
+}
+
+.versus-result-wait {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8aa5b8;
+  text-align: center;
+}
+
+/* ── 좁은 화면: 순위표를 보드 위 가로 띠로 ── */
+@media (max-width: 900px) {
+  .versus-layout {
+    flex-direction: column-reverse;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 0;
+  }
+  .versus-layout .game-content { width: 100%; }
+  .versus-layout .board {
+    --bmax-w: calc(100vw - 12px);
+    --bmax-h: calc(100dvh - 150px);
+  }
+  .versus-layout .board-wrap { width: 100%; height: auto; }
+  .versus-layout .hud { max-width: 100%; }
+
+  .versus-layout > .lb { width: 100%; border-radius: 0; border-left: none; border-right: none; padding: 6px; }
+  .versus-layout > .lb .lb-title { display: none; }
+  .versus-layout > .lb .lb-rows { height: auto !important; display: flex; gap: 6px; overflow-x: auto; }
+  .versus-layout > .lb .lb-row {
+    position: static;
+    transform: none !important;
+    flex: 0 0 150px;
+    height: 40px;
+  }
+}

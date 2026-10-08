@@ -9,6 +9,7 @@ interface Props {
   matchedCells: Set<string>;
   currentPath: [number, number][] | null;
   onCellClick: (r: number, c: number) => void;
+  canBreak?: boolean;
 }
 
 // 연결 경로 → 꺾임점(코너)만 추출
@@ -33,7 +34,7 @@ const GAP    = 4;
 const CELL_W = 75;
 const CELL_H = 100;
 
-export default function Board({ board, selected, pathCells, matchedCells, currentPath, onCellClick }: Props) {
+export default function Board({ board, selected, pathCells, matchedCells, currentPath, onCellClick, canBreak }: Props) {
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
 
@@ -142,6 +143,7 @@ export default function Board({ board, selected, pathCells, matchedCells, curren
                   isOnPath={isOnPath}
                   isMatched={isMatched}
                   onClick={() => onCellClick(r, c)}
+                  canBreak={canBreak}
                 />
               )}
             </div>

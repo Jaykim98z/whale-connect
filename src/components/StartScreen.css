@@ -263,6 +263,28 @@
   box-shadow: 0 2px 0 #1a7aaa, 0 3px 10px rgba(78,197,224,0.3);
 }
 
+/* ── 솔로 · 멀티 선택: 같은 크기의 버튼 두 개 ── */
+.ss-play-row {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.ss-btn-mode {
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 7px;
+  padding: 16px 10px;
+  white-space: nowrap;
+}
+
+/* 도움말 안의 모드별 소제목 */
+.ss-help-ttl.ss-help-ttl-sub {
+  margin-top: 6px;
+  padding-top: 9px;
+  border-top: 1px solid #e2f1f9;
+}
+
 /* ── 랭킹 버튼 ── */
 .ss-btn-ranking {
   width: 100%;
@@ -440,5 +462,8 @@
   .ss-help-tooltip {
     width: min(280px, 80vw);
     left: -4px;  /* 카드 왼쪽 끝 기준으로 살짝만 */
+    /* 솔로·멀티 설명이 길어 카드 밖으로 잘리지 않게 안에서 스크롤 */
+    max-height: 60dvh;
+    overflow-y: auto;
   }
 }

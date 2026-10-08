@@ -8,13 +8,18 @@ interface Props {
   isOnPath: boolean;
   isMatched: boolean;
   onClick: () => void;
+  canBreak?: boolean; // 장애물 부수기 횟수가 남아 있으면 장애물도 클릭 가능 (대전 모드)
 }
 
-export default function Card({ typeId, isSelected, isOnPath, isMatched, onClick }: Props) {
+export default function Card({ typeId, isSelected, isOnPath, isMatched, onClick, canBreak }: Props) {
   // 장애물 카드
   if (typeId === OBSTACLE_ID) {
     return (
-      <div className="card card-obstacle">
+      <div
+        className="card card-obstacle"
+        onClick={canBreak ? onClick : undefined}
+        style={canBreak ? { cursor: 'pointer' } : undefined}
+      >
         <Lock strokeWidth={2} className="card-obstacle-lock" />
       </div>
     );

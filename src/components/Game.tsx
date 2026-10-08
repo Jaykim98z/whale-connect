@@ -29,7 +29,12 @@ function loadBoardScale(): number {
   }
 }
 
-export default function Game() {
+interface Props {
+  /** 타이틀의 멀티플레이 버튼 — 멀티를 쓸 수 없는 환경이면 undefined */
+  onMulti?: () => void;
+}
+
+export default function Game({ onMulti }: Props) {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
   const [showRanking, setShowRanking] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
@@ -79,7 +84,7 @@ export default function Game() {
   const { phase, isPaused } = state;
 
   if (phase === 'title') {
-    return <StartScreen onStart={startGame} />;
+    return <StartScreen onStart={startGame} onMulti={onMulti} />;
   }
 
   return (

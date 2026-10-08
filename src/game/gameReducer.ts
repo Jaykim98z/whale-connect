@@ -11,6 +11,9 @@ import { toSeconds } from './format';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { getBoardConfig, MAX_STAGE, pickFanchars } from './stages';
+import {
+  getVersusCounts, VERSUS_BREAK_CHARGES, VERSUS_COLS, VERSUS_FANCHARS, VERSUS_OBSTACLES, VERSUS_ROWS, VERSUS_TIME_LIMIT,
+} from './versus';
 
 export type Cell = [number, number];
 export type Phase = 'title' | 'playing' | 'gameover' | 'cleared';
@@ -42,6 +45,7 @@ export interface GameEvent {
 
 export interface GameState {
   phase: Phase;
+  versus: boolean; // 멀티 대전 규칙(versus.ts) 적용 여부
   gameId: number;
   rngSeed: number;
   stage: number;
@@ -56,6 +60,7 @@ export interface GameState {
   timeLeftMs: number;
   possiblePairs: number;
   shuffleCharge: number;
+  breakCharge: number; // 장애물 부수기 남은 횟수 (대전 모드 전용)
   isPaused: boolean;
   countdown: number | null;
   nextBoard: Board | null;
@@ -68,7 +73,8 @@ export interface GameState {
 
 // 시각(at)이 필요한 액션은 스케줄러가 현재 시각을 실어 보낸다 — reducer는 시계를 읽지 않는다
 export type GameAction =
-  | { type: 'START'; seed: number }
+  // versus: 대전 모드. timeLimitMs는 전원의 종료 시각을 맞추기 위해 방의 시작 시각에서 계산해 넘긴다
+  | { type: 'START'; seed: number; versus?: boolean; timeLimitMs?: number }
   | { type: 'GO_TITLE' }
   | { type: 'PAUSE' }
   | { type: 'RESUME' }
@@ -88,6 +94,7 @@ const COUNTDOWN_START = 3;
 export function createInitialState(): GameState {
   return {
     phase: 'title',
+    versus: false,
     gameId: 0,
     rngSeed: 0,
     stage: 1,
@@ -102,6 +109,7 @@ export function createInitialState(): GameState {
     timeLeftMs: TIME_LIMIT * 1000,
     possiblePairs: 0,
     shuffleCharge: 0,
+    breakCharge: 0,
     isPaused: false,
     countdown: null,
     nextBoard: null,
@@ -155,11 +163,21 @@ function isPendingCell(s: GameState, r: number, c: number): boolean {
   return s.pendingMatches.some(m => (m.a[0] === r && m.a[1] === c) || (m.b[0] === r && m.b[1] === c));
 }
 
-function start(prev: GameState, seed: number): GameState {
-  const { value: board, seed: nextSeed } = buildStageBoard(1, seed);
+function buildVersusBoard(seed: number): { value: Board; seed: number } {
+  return withRng(seed, rng => {
+    const counts = getVersusCounts(pickFanchars(MAX_STAGE, rng).slice(0, VERSUS_FANCHARS));
+    return generateBoardWithObstacles(VERSUS_ROWS, VERSUS_COLS, counts, VERSUS_OBSTACLES, rng);
+  });
+}
+
+function start(prev: GameState, seed: number, versus: boolean, timeLimitMs?: number): GameState {
+  const { value: board, seed: nextSeed } = versus ? buildVersusBoard(seed) : buildStageBoard(1, seed);
   return {
     ...createInitialState(),
     phase: 'playing',
+    versus,
+    timeLeftMs: timeLimitMs ?? (versus ? VERSUS_TIME_LIMIT : TIME_LIMIT) * 1000,
+    breakCharge: versus ? VERSUS_BREAK_CHARGES : 0,
     gameId: prev.gameId + 1,
     rngSeed: nextSeed,
     board,
@@ -171,9 +189,23 @@ function start(prev: GameState, seed: number): GameState {
   };
 }
 
+// 장애물 부수기: 클릭 한 번으로 제거 — 선택 중인 카드는 유지
+function breakObstacle(s: GameState, r: number, c: number): GameState {
+  const board = s.board.map(row => [...row]);
+  board[r][c] = null;
+  return withEvent({
+    ...s,
+    board,
+    boardVersion: s.boardVersion + 1,
+    breakCharge: s.breakCharge - 1,
+    possiblePairs: countPossiblePairs(board),
+  }, 'select');
+}
+
 function click(s: GameState, r: number, c: number): GameState {
   if (!isRunning(s)) return s;
   const value = s.board[r]?.[c];
+  if (value === OBSTACLE_ID && s.breakCharge > 0) return breakObstacle(s, r, c);
   if (value === null || value === undefined || value === OBSTACLE_ID) return s;
   if (isPendingCell(s, r, c)) return s;
 
@@ -202,9 +234,9 @@ function click(s: GameState, r: number, c: number): GameState {
 function clearStage(s: GameState): GameState {
   const score = s.score + BOARD_CLEAR_BONUS;
 
-  if (s.stage >= MAX_STAGE) {
+  if (s.versus || s.stage >= MAX_STAGE) {
     const timeBonus = toSeconds(s.timeLeftMs) * TIME_BONUS_MULTIPLIER;
-    const clearBonus = MAX_STAGE * BOARD_CLEAR_BONUS;
+    const clearBonus = (s.versus ? 1 : MAX_STAGE) * BOARD_CLEAR_BONUS;
     const finalScore = score + timeBonus;
     return withEvent({
       ...s,
@@ -241,7 +273,8 @@ function resolveMatch(s: GameState, matchId: number, at: number): GameState {
 
   // 콤보: 직전 매칭 후 COMBO_WINDOW_MS 이내면 +1 (최대 COMBO_MAX), 아니면 0부터
   const inWindow = s.lastMatchAt !== null && at - s.lastMatchAt <= COMBO_WINDOW_MS;
-  const combo = inWindow ? Math.min(s.combo + 1, COMBO_MAX) : 0;
+  // 대전 모드에는 콤보가 없다
+  const combo = inWindow && !s.versus ? Math.min(s.combo + 1, COMBO_MAX) : 0;
 
   let next: GameState = {
     ...s,
@@ -289,7 +322,7 @@ export function gameReducer(s: GameState, action: GameAction): GameState {
 
   switch (action.type) {
     case 'START':
-      return start(s, action.seed);
+      return start(s, action.seed, action.versus ?? false, action.timeLimitMs);
     case 'GO_TITLE':
       return {
         ...s,
@@ -302,7 +335,8 @@ export function gameReducer(s: GameState, action: GameAction): GameState {
         clearing: false,
       };
     case 'PAUSE':
-      return s.phase === 'playing' && !s.isPaused ? { ...s, isPaused: true } : s;
+      // 대전 모드는 전원이 같은 시각에 끝나야 하므로 일시정지할 수 없다
+      return s.phase === 'playing' && !s.isPaused && !s.versus ? { ...s, isPaused: true } : s;
     case 'RESUME':
       return s.isPaused ? { ...s, isPaused: false } : s;
     case 'CLICK':

@@ -1,0 +1,38 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$code": {
+        ".read": true,
+        ".write": "$code.length === 6 && $code.matches(/^[A-Z0-9]+$/)",
+        "meta": {
+          ".validate": "newData.hasChildren(['hostId', 'status', 'seed', 'startAt', 'round', 'createdAt'])",
+          "hostId": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 32" },
+          "status": { ".validate": "newData.val() === 'lobby' || newData.val() === 'playing'" },
+          "seed": { ".validate": "newData.isNumber()" },
+          "startAt": { ".validate": "newData.isNumber()" },
+          "round": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "createdAt": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+        "players": {
+          "$playerId": {
+            ".validate": "$playerId.length <= 32 && newData.hasChildren(['name', 'joinedAt', 'connected', 'score', 'progress', 'scoredAt', 'finished'])",
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24" },
+            "soopId": { ".validate": "newData.isString() && newData.val().length <= 50" },
+            "profileImage": { ".validate": "newData.isString() && newData.val().length <= 300 && newData.val().beginsWith('https://')" },
+            "joinedAt": { ".validate": "newData.isNumber()" },
+            "connected": { ".validate": "newData.isBoolean()" },
+            "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99999" },
+            "progress": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+            "scoredAt": { ".validate": "newData.isNumber()" },
+            "finished": { ".validate": "newData.isBoolean()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

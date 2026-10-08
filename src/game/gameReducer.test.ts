@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from './boardLogic';
 import { countPossiblePairs } from './boardLogic';
-import { ITEM_SHUFFLE_ID, OBSTACLE_ID, TIME_LIMIT } from './constants';
+import { ITEM_SHUFFLE_ID, ITEM_TIME_ID, OBSTACLE_ID, TIME_LIMIT } from './constants';
 import { createInitialState, gameReducer, selectBoardView } from './gameReducer';
 import type { GameAction, GameState } from './gameReducer';
 import { parseBoard } from './testUtils';
+import {
+  VERSUS_BREAK_CHARGES, VERSUS_COLS, VERSUS_OBSTACLES, VERSUS_ROWS, VERSUS_TIME_LIMIT, VERSUS_TOTAL_CARDS, versusProgress,
+} from './versus';
 
 function playing(board: Board, overrides: Partial<GameState> = {}): GameState {
   return {
@@ -364,5 +367,95 @@ describe('selectBoardView', () => {
     expect(view.currentPath).toEqual([[1, 0], [1, 1]]);
     expect([...view.pathCells]).toEqual(['1,0', '1,1']);
     expect([...view.matchedCells].sort()).toEqual(['0,0', '0,2']);
+  });
+});
+
+describe('대전 모드', () => {
+  const versus = (board: Board, overrides: Partial<GameState> = {}) => playing(board, { versus: true, ...overrides });
+
+  it('큰 단판 보드로 시작한다 — 시간추가 아이템 없음, 부수기 지급', () => {
+    const s = gameReducer(createInitialState(), { type: 'START', seed: 99, versus: true });
+    const cells = s.board.flat();
+    expect(s.versus).toBe(true);
+    expect(s.board).toHaveLength(VERSUS_ROWS);
+    expect(s.board[0]).toHaveLength(VERSUS_COLS);
+    expect(cells.filter(v => v === OBSTACLE_ID)).toHaveLength(VERSUS_OBSTACLES);
+    expect(cells.filter(v => v !== null && v !== OBSTACLE_ID)).toHaveLength(VERSUS_TOTAL_CARDS);
+    expect(cells).not.toContain(ITEM_TIME_ID);
+    expect(s.timeLeftMs).toBe(VERSUS_TIME_LIMIT * 1000);
+    expect(s.breakCharge).toBe(VERSUS_BREAK_CHARGES);
+    expect(versusProgress(s.board)).toBe(0);
+  });
+
+  it('모든 카드 종류가 짝수 장', () => {
+    const s = gameReducer(createInitialState(), { type: 'START', seed: 4, versus: true });
+    const counts = new Map<number, number>();
+    for (const v of s.board.flat()) {
+      if (v !== null && v !== OBSTACLE_ID) counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    for (const n of counts.values()) expect(n % 2).toBe(0);
+  });
+
+  it('같은 시드면 같은 보드', () => {
+    const a = gameReducer(createInitialState(), { type: 'START', seed: 5, versus: true });
+    const b = gameReducer(createInitialState(), { type: 'START', seed: 5, versus: true });
+    expect(a.board).toEqual(b.board);
+  });
+
+  it('timeLimitMs를 주면 그 시간으로 시작한다', () => {
+    const s = gameReducer(createInitialState(), { type: 'START', seed: 5, versus: true, timeLimitMs: 118_500 });
+    expect(s.timeLeftMs).toBe(118_500);
+  });
+
+  it('연속으로 맞춰도 콤보가 붙지 않는다', () => {
+    let s = versus(parseBoard(['11', '22', '33']));
+    s = matchPair(s, [0, 0], [0, 1], 1000);
+    s = matchPair(s, [1, 0], [1, 1], 1500);
+    expect(s.combo).toBe(0);
+    expect(s.score).toBe(20);
+  });
+
+  it('장애물을 클릭하면 부수기 횟수를 쓰고 장애물이 사라진다', () => {
+    const s = run(versus(parseBoard(['1#1', '2.2']), { breakCharge: 1 }), { type: 'CLICK', r: 0, c: 1 });
+    expect(s.board[0][1]).toBeNull();
+    expect(s.breakCharge).toBe(0);
+    expect(s.possiblePairs).toBe(countPossiblePairs(s.board));
+  });
+
+  it('부수기는 선택 중인 카드를 유지한다', () => {
+    const s = run(versus(parseBoard(['1#1', '2.2']), { breakCharge: 1 }),
+      { type: 'CLICK', r: 0, c: 0 }, { type: 'CLICK', r: 0, c: 1 });
+    expect(s.selected).toEqual([0, 0]);
+  });
+
+  it('횟수가 없으면 장애물 클릭은 무시된다', () => {
+    const before = versus(parseBoard(['1#1', '2.2']));
+    expect(run(before, { type: 'CLICK', r: 0, c: 1 })).toBe(before);
+  });
+
+  it('일시정지할 수 없다', () => {
+    const before = versus(parseBoard(['11']));
+    expect(run(before, { type: 'PAUSE' }).isPaused).toBe(false);
+  });
+
+  it('보드를 다 지우면 한 판으로 끝난다 — 클리어 보너스 + 잔여 시간 보너스', () => {
+    const s = matchPair(versus(parseBoard(['11']), { timeLeftMs: 30_000 }), [0, 0], [0, 1]);
+    expect(s.clearing).toBe(true);
+    expect(s.countdown).toBeNull();
+    expect(s.clearStats).toEqual({ matchScore: 10, clearBonus: 100, timeBonus: 300 });
+    expect(s.finalScore).toBe(410);
+    expect(run(s, { type: 'FINISH_CLEAR', gameId: s.gameId }).phase).toBe('cleared');
+  });
+
+  it('진행률은 지운 카드 비율', () => {
+    const s = gameReducer(createInitialState(), { type: 'START', seed: 1, versus: true });
+    const board = s.board.map(row => [...row]);
+    let removed = 0;
+    for (let r = 0; r < board.length && removed < VERSUS_TOTAL_CARDS / 2; r++) {
+      for (let c = 0; c < board[r].length && removed < VERSUS_TOTAL_CARDS / 2; c++) {
+        if (board[r][c] !== null && board[r][c] !== OBSTACLE_ID) { board[r][c] = null; removed++; }
+      }
+    }
+    expect(versusProgress(board)).toBe(50);
   });
 });

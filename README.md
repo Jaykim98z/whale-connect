@@ -45,6 +45,7 @@ SOOP 아이디로 닉네임·프로필 이미지를 자동 조회하고, 전 세
 | 🏆 **7스테이지 클리어 엔딩** | 전 스테이지 클리어 시 전용 결과 화면 + 잔여 시간 보너스, 랭킹에 왕관 표시 |
 | 🔍 **보드 크기 조절** | 60~160% 확대·축소, localStorage 저장 |
 | 🔊 **사운드** | BGM·게임오버 MP3 + Web Audio API 효과음 합성, 볼륨 localStorage 영속 저장 |
+| 👥 **멀티플레이 대전** | 방 코드로 2~8명이 모여 같은 10×18 보드를 120초 동안 각자 풀고 실시간 순위표로 경쟁 |
 | 🌐 **글로벌 랭킹** | Firebase Firestore 기반 TOP 100 실시간 랭킹 |
 | 👤 **SOOP 프로필 연동** | SOOP API로 닉네임·프로필 이미지 자동 조회 |
 | 🔇 **음소거 & 볼륨** | localStorage 기반 설정 영속 저장 |
@@ -69,6 +70,7 @@ SOOP 아이디로 닉네임·프로필 이미지를 자동 조회하고, 전 세
 |------|------|
 | **Firebase Firestore** | 랭킹 데이터 저장·조회 |
 | **Cloud Functions (v2)** | 랭킹 저장 (`saveRanking`, 서울 리전) |
+| **Firebase Realtime Database** | 멀티플레이 방 상태·점수 실시간 동기화 |
 | **Firebase Analytics** | 이벤트 트래킹 |
 | **Firebase Hosting** | 정적 사이트 배포 |
 | **SOOP Public API** | 스트리머 닉네임·프로필 이미지 조회 |
@@ -104,6 +106,21 @@ SOOP 아이디로 닉네임·프로필 이미지를 자동 조회하고, 전 세
 ### 아이템
 - ⏱️ **시간추가 카드** — 매칭 시 +5초
 - 🔀 **셔플 카드** — 매칭 시 셔플 1회 충전 → HUD 버튼으로 사용
+
+### 멀티플레이 대전
+
+타이틀의 **멀티플레이**에서 방을 만들거나 6자리 코드(또는 초대 링크)로 입장합니다. 방장이 시작하면 전원이 같은 보드로 동시에 출발합니다.
+
+| 항목 | 규칙 |
+|------|------|
+| 보드 | 10 × 18, 장애물 12개, 카드 168장 (모두 같은 배치로 시작) |
+| 제한 시간 | 120초 고정 — 일시정지 없음 |
+| 점수 | 쌍당 +10점, 콤보 없음 |
+| 클리어 | +100점, 잔여 초 × 10점 |
+| 아이템 | 셔플 카드만 등장. 장애물 부수기 2회를 갖고 시작 (장애물을 클릭해 사용) |
+| 순위 | 점수 높은 순, 동점이면 그 점수에 먼저 도달한 사람 |
+
+결과는 그 방의 순위표로만 보여주고 저장하지 않습니다. 설계 배경은 `docs/superpowers/specs/2026-10-08-multiplayer-versus-design.md`에 있습니다.
 
 ---
 
@@ -339,11 +356,14 @@ npm test
 # 1. Cloud Functions (predeploy에서 자동 빌드)
 firebase deploy --only functions
 
-# 2. 프로덕션 빌드 후 Hosting
+# 2. Realtime Database 규칙 (멀티플레이)
+firebase deploy --only database
+
+# 3. 프로덕션 빌드 후 Hosting
 npm run build
 firebase deploy --only hosting
 
-# 3. Firestore 보안 규칙
+# 4. Firestore 보안 규칙
 firebase deploy --only firestore:rules
 ```
 
@@ -362,6 +382,8 @@ VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 VITE_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
+# 멀티플레이 (Realtime Database) — 비워 두면 멀티플레이 버튼이 숨겨집니다
+VITE_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.asia-southeast1.firebasedatabase.app
 ```
 
 ---
