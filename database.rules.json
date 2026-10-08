@@ -3,6 +3,7 @@
     ".read": false,
     ".write": false,
     "rooms": {
+      ".indexOn": ["meta/createdAt"],
       "$code": {
         ".read": true,
         ".write": "$code.length === 6 && $code.matches(/^[A-Z0-9]+$/)",

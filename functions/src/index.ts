@@ -1,9 +1,16 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { logger } from 'firebase-functions/v2';
 import { initializeApp } from 'firebase-admin/app';
+import { getDatabaseWithUrl } from 'firebase-admin/database';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { deleteStaleRooms, STALE_ROOM_AGE_MS } from './cleanupRooms';
 
 initializeApp();
 const db = getFirestore();
+
+// 멀티플레이 방이 들어 있는 Realtime Database (클라이언트의 VITE_FIREBASE_DATABASE_URL과 같은 인스턴스)
+const ROOMS_DATABASE_URL = 'https://whale-connect-default-rtdb.asia-southeast1.firebasedatabase.app';
 
 const RANKINGS = 'wc-rankings';
 const WC_RANKINGS = 'wc-rankings-wc';
@@ -159,5 +166,17 @@ export const saveRanking = onCall<SaveRankingRequest, Promise<SaveRankingResult>
     await trimRankings().catch(() => {});
 
     return { success: true, isWC, ...result };
+  },
+);
+
+/**
+ * cleanupRooms — 만든 지 24시간이 넘은 멀티플레이 방을 매일 새벽에 지운다.
+ * Admin SDK라 database.rules.json의 제한을 받지 않는다.
+ */
+export const cleanupRooms = onSchedule(
+  { schedule: 'every day 05:00', timeZone: 'Asia/Seoul', region: 'asia-northeast3' },
+  async () => {
+    const deleted = await deleteStaleRooms(getDatabaseWithUrl(ROOMS_DATABASE_URL), Date.now() - STALE_ROOM_AGE_MS);
+    logger.info(`cleanupRooms: ${deleted}개 방 삭제`);
   },
 );
