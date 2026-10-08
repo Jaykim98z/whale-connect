@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Crown, Link2, LogOut, Play } from 'lucide-react';
+import { Check, Crown, Eye, EyeOff, Link2, LogOut, Play } from 'lucide-react';
 import { MAX_PLAYERS, MIN_PLAYERS_TO_START } from '../../game/roomLogic';
 import type { Room, RoomPlayer } from '../../game/roomLogic';
 import { VERSUS_BREAK_CHARGES, VERSUS_COLS, VERSUS_ROWS, VERSUS_TIME_LIMIT } from '../../game/versus';
@@ -16,6 +16,8 @@ interface Props {
 
 export default function Lobby({ room, me, onStart, onLeave }: Props) {
   const [copied, setCopied] = useState(false);
+  // 방송 화면에 노출되지 않게 방 코드는 가린 채로 시작한다
+  const [hideCode, setHideCode] = useState(true);
   const isHost = room.meta.hostId === me.id;
   const players = [...room.players].sort((a, b) => a.joinedAt - b.joinedAt || a.id.localeCompare(b.id));
   const canStart = players.length >= MIN_PLAYERS_TO_START;
@@ -35,10 +37,17 @@ export default function Lobby({ room, me, onStart, onLeave }: Props) {
           <div className="ss-top-bar" />
 
           <p className="mp-code-label">방 코드</p>
-          <p className="mp-code">{room.code}</p>
-          <button className="mp-copy" type="button" onClick={copyLink}>
-            {copied ? <><Check size={14} /> 복사됨</> : <><Link2 size={14} /> 초대 링크 복사</>}
-          </button>
+          <p className={`mp-code ${hideCode ? 'mp-code-hidden' : ''}`}>
+            {hideCode ? '•'.repeat(room.code.length) : room.code}
+          </p>
+          <div className="mp-code-actions">
+            <button className="mp-copy" type="button" onClick={copyLink}>
+              {copied ? <><Check size={14} /> 복사됨</> : <><Link2 size={14} /> 초대 링크 복사</>}
+            </button>
+            <button className="mp-copy" type="button" onClick={() => setHideCode(!hideCode)}>
+              {hideCode ? <><Eye size={14} /> 코드 보기</> : <><EyeOff size={14} /> 코드 가리기</>}
+            </button>
+          </div>
 
           <div className="mp-players-head">
             참가자 <strong>{players.length}</strong> / {MAX_PLAYERS}

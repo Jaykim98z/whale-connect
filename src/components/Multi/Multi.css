@@ -190,6 +190,17 @@
   z-index: 1;
 }
 
+.mp-code-hidden { color: #9ab8cc; }
+
+.mp-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+}
+
 .mp-copy {
   display: inline-flex;
   align-items: center;
