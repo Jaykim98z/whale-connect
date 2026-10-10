@@ -458,8 +458,18 @@
 .lb-progress { font-size: 10px; font-weight: 700; color: #9ab8cc; }
 
 /* ── 결과 창 ── */
-.versus-result { max-width: 360px; overflow: visible; }
-.versus-result .lb { width: 100%; background: transparent; border: none; box-shadow: none; padding: 0; }
+/* 인원이 많아 결과 창이 화면보다 길어지면 순위표만 스크롤 — 버튼은 항상 보이게 */
+.versus-result { max-width: 360px; max-height: 94dvh; }
+.versus-result .lb {
+  width: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  flex-shrink: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 .versus-result .result-sub { font-size: 13px; }
 .versus-result .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
 
@@ -502,6 +512,6 @@
     position: static;
     transform: none !important;
     flex: 0 0 150px;
-    height: 40px;
+    height: 40px !important;
   }
 }

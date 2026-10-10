@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { ArrowLeft, LogIn, Plus } from 'lucide-react';
-import { NAME_MAX_LENGTH, normalizeRoomCode, ROOM_CODE_LENGTH } from '../../game/roomLogic';
+import { MAX_PLAYERS, NAME_MAX_LENGTH, normalizeRoomCode, ROOM_CODE_LENGTH } from '../../game/roomLogic';
 import { createRoom, joinRoom, RoomError } from '../../services/room';
 import type { PlayerProfile, RoomErrorCode } from '../../services/room';
 import { fetchSoopUser } from '../../services/soopAPI';
@@ -122,7 +122,7 @@ export default function MultiEntry({ initialCode, notice, onJoined, onBack }: Pr
           </button>
 
           <h1 className="mp-title">멀티플레이</h1>
-          <p className="mp-desc">같은 보드를 각자 풀어 2분 동안 점수를 겨룹니다. 최대 8명.</p>
+          <p className="mp-desc">같은 보드를 각자 풀어 2분 동안 점수를 겨룹니다. 최대 {MAX_PLAYERS}명.</p>
 
           {notice && <p className="mp-notice">{notice}</p>}
 

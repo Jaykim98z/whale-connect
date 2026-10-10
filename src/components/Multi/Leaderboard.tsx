@@ -3,6 +3,10 @@ import type { RoomPlayer } from '../../game/roomLogic';
 import PlayerAvatar from './PlayerAvatar';
 
 const ROW_HEIGHT = 56;
+// 인원이 많으면 행을 낮춰 순위표가 화면 높이를 넘지 않게 한다
+const COMPACT_ROW_HEIGHT = 44;
+const COMPACT_FROM = 9;
+const ROW_GAP = 6;
 
 interface Props {
   players: RoomPlayer[];
@@ -16,11 +20,12 @@ interface Props {
 export default function Leaderboard({ players, meId, title, showFinished = false }: Props) {
   const rankOf = new Map(rankPlayers(players).map((p, i) => [p.id, i]));
   const stable = [...players].sort((a, b) => a.id.localeCompare(b.id));
+  const rowHeight = players.length >= COMPACT_FROM ? COMPACT_ROW_HEIGHT : ROW_HEIGHT;
 
   return (
     <div className="lb">
       <div className="lb-title">{title}</div>
-      <div className="lb-rows" style={{ height: players.length * ROW_HEIGHT }}>
+      <div className="lb-rows" style={{ height: players.length * rowHeight }}>
         {stable.map(p => {
           const rank = rankOf.get(p.id) ?? 0;
           return (
@@ -31,7 +36,7 @@ export default function Leaderboard({ players, meId, title, showFinished = false
                 p.id === meId ? 'lb-row-me' : '',
                 p.connected ? '' : 'lb-row-off',
               ].join(' ')}
-              style={{ transform: `translateY(${rank * ROW_HEIGHT}px)`, order: rank }}
+              style={{ transform: `translateY(${rank * rowHeight}px)`, height: rowHeight - ROW_GAP, order: rank }}
             >
               <span className={`lb-rank lb-rank-${rank + 1}`}>{rank + 1}</span>
               <PlayerAvatar player={p} size={30} />

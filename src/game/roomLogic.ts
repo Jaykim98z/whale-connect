@@ -2,7 +2,7 @@ import { VERSUS_TIME_LIMIT } from './versus';
 
 // ── 멀티 방 규칙 (순수 함수) — DB 입출력은 services/room.ts ──
 
-export const MAX_PLAYERS = 8;
+export const MAX_PLAYERS = 12;
 export const MIN_PLAYERS_TO_START = 2;
 export const ROOM_CODE_LENGTH = 6;
 export const NAME_MAX_LENGTH = 12;
